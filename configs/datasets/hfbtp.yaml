@@ -1,0 +1,15 @@
+dataset_id: "hfbtp"
+raw_data_path: "data/raw/hfbtp"
+features:
+  - "tx_rate"
+  - "batch_size"
+  - "batch_timeout"
+targets:
+  - "throughput"
+  - "avg_latency"
+group_split_cols:
+  - "batch_size"
+  - "batch_timeout"
+evaluation:
+  test_size: 0.2
+  random_state: 42

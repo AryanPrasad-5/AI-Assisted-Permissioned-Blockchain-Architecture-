@@ -1,0 +1,26 @@
+dataset_id: "mmbpd"
+dataset_name: "Multi-scenario Permissioned Blockchain Dataset"
+version: "1.0.0"
+source_url: "Pending acquisition and documentation"
+citation: "Pending literature audit"
+license: "Check license terms prior to distribution"
+raw_files:
+  - filename: "mmbpd_raw.csv"
+    sha256: "TBD_DURING_INDEPENDENT_EVALUATION"
+    description: "Benchmark traces for cross-dataset evaluation"
+target_variables:
+  - name: "throughput"
+    unit: "tps"
+    description: "Throughput (must verify unit compatibility with HFBTP)"
+  - name: "avg_latency"
+    unit: "s_or_ms"
+    description: "Average latency (must verify unit compatibility with HFBTP)"
+features: []
+experimental_setup:
+  blockchain_type: "Hyperledger Fabric"
+  benchmark_tool: "TBD"
+  is_time_series: false
+  has_replications: false
+notes: >
+  Reserved exclusively for out-of-sample cross-dataset evaluation and generalization testing.
+  Do NOT merge with HFBTP without auditing feature semantics and measurement protocol.

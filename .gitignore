@@ -1,0 +1,112 @@
+# ==============================================================================
+# Research Repository .gitignore - Hyperledger Fabric ML Performance Prediction
+# ==============================================================================
+
+# Python Environments & Caching
+.venv/
+venv/
+env/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Byte-compiled / Optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Unit Test & Coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# IDE & Editor Configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment Variables & Secrets
+.env
+.env.*
+*.secret
+*.pem
+*.key
+
+# Data Management (Keep directory structure tracked via .gitkeep, ignore data files)
+# Raw datasets must NEVER be pushed to Git unless explicitly allowed
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/README.md
+!data/raw/hfbtp/
+data/raw/hfbtp/*
+!data/raw/hfbtp/.gitkeep
+!data/raw/mmbpd/
+data/raw/mmbpd/*
+!data/raw/mmbpd/.gitkeep
+!data/raw/external/
+data/raw/external/*
+!data/raw/external/.gitkeep
+
+# Interim & Processed Datasets
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Experiment Outputs, Model Weights & Logs
+experiments/results/*
+!experiments/results/.gitkeep
+experiments/figures/*
+!experiments/figures/.gitkeep
+experiments/logs/*
+!experiments/logs/.gitkeep
+
+# Serialized Model Artifacts
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.h5
+
+# Fabric Telemetry & Temporary Traces
+fabric-testbed/telemetry/*
+!fabric-testbed/telemetry/.gitkeep
+fabric-testbed/logs/*
+!fabric-testbed/logs/.gitkeep

@@ -1,0 +1,8 @@
+dataset_id: "mmbpd"
+raw_data_path: "data/raw/mmbpd"
+features: []
+targets:
+  - "throughput"
+  - "avg_latency"
+evaluation:
+  role: "independent_test_set"

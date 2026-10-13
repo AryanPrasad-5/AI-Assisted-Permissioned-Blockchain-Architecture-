@@ -158,63 +158,81 @@ Baseline and proposed systems are evaluated under **matched** conditions: identi
 
 ## Repository Structure
 
-```
+```text
 .
-├── docs/                    # Literature review, research-gap analysis, write-up
-├── blockchain/               # Permissioned blockchain network configuration
-├── workload-gen/              # Synthetic transaction & workload generation
-├── api-gateway/               # Transaction ingestion layer
-├── monitoring/                # Metrics collection (Prometheus/Grafana configs)
-├── ai-model/                  # AI task definition, training, inference
-├── adaptive-controller/        # Adaptive decision mechanism
-├── experiments/                # Experiment configs and run scripts
-├── analysis/                   # Statistical analysis, plots, notebooks
-├── results/                    # Raw logs and generated results
-├── docker-compose.yml
-└── README.md
+├── README.md               # Research project overview and reproduction instructions
+├── .gitignore              # Research-grade ignore rules (excluding raw data & model weights)
+├── requirements.txt        # Pinned Python package dependencies
+├── pyproject.toml          # PEP 517/621 project configuration and pytest setup
+├── LICENSE                 # MIT License
+├── data/                   # Data layer: raw, interim, processed datasets & manifests
+│   ├── README.md           # Acquisition, licensing, and dataset registration manual
+│   ├── raw/                # Immutable original datasets (HFBTP, MMBPD, external)
+│   ├── interim/            # Intermediate transformations
+│   ├── processed/          # ML-ready feature matrices
+│   └── manifests/          # Formal metadata and provenance manifests
+├── configs/                # Reproducible YAML experiment and model configurations
+│   ├── datasets/           # Dataset loading and split configurations
+│   ├── experiments/        # End-to-end experiment pipeline specs
+│   └── models/             # ML model architectures and hyperparameters
+├── notebooks/              # Sequential research notebooks (01_audit to 05_comparison)
+├── src/                    # Source package: fabric_perf
+│   └── fabric_perf/
+│       ├── data/           # Dataset loaders implementing BaseDatasetLoader
+│       ├── features/       # Feature engineering & transformers
+│       ├── models/         # Performance prediction models (regression & ensembles)
+│       ├── evaluation/     # Group/configuration-aware splitters and metrics
+│       ├── controllers/    # Static, reactive, and predictive controllers
+│       └── utils/          # Reproducibility seeds, logging, helpers
+├── tests/                  # Unit and integration test suite
+├── experiments/            # Experiment artifacts (results, figures, run logs)
+├── fabric-testbed/         # Controlled local Hyperledger Fabric network & Caliper setup
+└── docs/                   # Academic documentation and research protocols
+    ├── research_plan.md    # Phased research plan and milestone map
+    ├── dataset_catalog.md  # Multi-dataset registry and provenance records
+    ├── methodology.md      # Mathematical formulation of the 3 control paradigms
+    └── evaluation_protocol.md # Leakage-safe evaluation & splitting protocols
 ```
 
-> Structure is provisional and will evolve as the architecture is finalized.
+## Git Branch Strategy (No `dev` Branch)
+
+To ensure linear, reproducible research history, we avoid long-lived unstructured development branches:
+
+- **`main`**: Always contains stable, reproducible code, verified documentation, and passed test suites.
+- **Short-Lived Feature Branches**: Created from `main` for one specific milestone, tested, and merged directly back into `main`:
+  - `feature/dataset-audit`: Audit and validate HFBTP & MMBPD raw schemas.
+  - `feature/eda`: Exploratory data analysis and response surfaces.
+  - `feature/evaluation-protocol`: Leakage-safe splitting implementations.
+  - `feature/baseline-models`: Linear regression and decision tree baselines.
+  - `feature/model-training`: Advanced models and hyperparameter tuning.
+  - `feature/cross-dataset-validation`: Cross-dataset evaluation on MMBPD.
+  - `feature/controllers`: Static, reactive, and predictive controller implementations.
+  - `feature/fabric-testbed`: Controlled local Fabric experiments.
+  - `feature/research-report`: Final tables, figures, and publication deliverables.
 
 ## Getting Started
 
-### Prerequisites
+### 1. Environment Setup (Local Laptop)
 
-- Docker and Docker Compose
-- Go 1.21+
-- Python 3.10+
-- `make` (optional, for convenience commands)
+```powershell
+# Open Windows PowerShell in repository directory
+cd d:\Reseach_Model\AI-Assisted-Permissioned-Blockchain-Architecture-
 
-### Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/AryanPrasad-5/AI-Assisted-Permissioned-Blockchain-Architecture-.git
-cd AI-Assisted-Permissioned-Blockchain-Architecture-
-
-# Start the permissioned blockchain network and supporting services
-docker compose up -d
-
-# Install Python dependencies for AI/analysis components
+# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# Install package in editable mode with development dependencies
+pip install -e .[dev]
 ```
 
-## Reproducing Experiments
+### 2. Verify Installation & Test Suite
 
-```bash
-# Run the baseline (no AI adaptation) under a given workload profile
-python experiments/run_experiment.py --system baseline --workload medium
-
-# Run the AI-assisted system under the same workload profile
-python experiments/run_experiment.py --system ai-assisted --workload medium
-
-# Generate statistical comparison and plots
-python analysis/compare_results.py --baseline results/baseline_medium.json --proposed results/ai_medium.json
+```powershell
+pytest
 ```
-
-Every experiment run is defined by an explicit configuration file (workload profile, blockchain config, repetitions, hardware notes) stored alongside its results in `experiments/configs/` to support independent reproduction.
 
 ## Tech Stack
 

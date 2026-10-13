@@ -1,0 +1,35 @@
+dataset_id: "hfbtp"
+dataset_name: "Hyperledger Fabric Benchmark & Tuning Platform Dataset"
+version: "1.0.0"
+source_url: "Pending formal audit and verification against raw files"
+citation: "Pending literature audit"
+license: "Check repository license prior to distribution"
+raw_files:
+  - filename: "hfbtp_raw.csv"
+    sha256: "TBD_DURING_AUDIT_MILESTONE"
+    description: "Raw static benchmark configuration grid output"
+target_variables:
+  - name: "throughput"
+    unit: "tps"
+    description: "Transactions processed per second"
+  - name: "avg_latency"
+    unit: "s_or_ms"
+    description: "Average transaction execution and commit latency"
+features:
+  - name: "tx_rate"
+    type: "numerical"
+    unit: "tps"
+  - name: "batch_size"
+    type: "numerical"
+    unit: "txs"
+  - name: "batch_timeout"
+    type: "numerical"
+    unit: "ms"
+experimental_setup:
+  blockchain_type: "Hyperledger Fabric"
+  benchmark_tool: "Hyperledger Caliper / Custom benchmark harness"
+  is_time_series: false
+  has_replications: false
+notes: >
+  Initial research planning indicates HFBTP is a static benchmark grid without timestamps
+  or repeated observations per cell. This must be strictly audited in feature/dataset-audit.

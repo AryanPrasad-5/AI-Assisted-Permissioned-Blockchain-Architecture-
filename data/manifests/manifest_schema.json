@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatasetManifest",
+  "description": "Metadata manifest schema for registering research datasets in fabric-perf",
+  "type": "object",
+  "required": [
+    "dataset_id",
+    "dataset_name",
+    "version",
+    "source_url",
+    "license",
+    "raw_files",
+    "target_variables",
+    "features",
+    "experimental_setup"
+  ],
+  "properties": {
+    "dataset_id": {
+      "type": "string",
+      "description": "Short identifier, e.g. hfbtp, mmbpd"
+    },
+    "dataset_name": {
+      "type": "string",
+      "description": "Full formal name of the dataset"
+    },
+    "version": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "citation": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "raw_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["filename", "sha256"],
+        "properties": {
+          "filename": { "type": "string" },
+          "sha256": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "target_variables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "unit"],
+        "properties": {
+          "name": { "type": "string" },
+          "unit": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["numerical", "categorical", "boolean"] },
+          "unit": { "type": "string" }
+        }
+      }
+    },
+    "experimental_setup": {
+      "type": "object",
+      "properties": {
+        "blockchain_type": { "type": "string" },
+        "orderer_type": { "type": "string" },
+        "ledger_type": { "type": "string" },
+        "benchmark_tool": { "type": "string" },
+        "is_time_series": { "type": "boolean" },
+        "has_replications": { "type": "boolean" }
+      }
+    }
+  }
+}
