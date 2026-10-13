@@ -1,223 +1,370 @@
 # AI-Assisted Adaptive Performance in Permissioned Blockchain Networks
 
-> Undergraduate research project investigating whether an AI-assisted adaptive mechanism can improve transaction-processing performance in a permissioned blockchain network modeling cross-border payment settlement.
+> **An undergraduate research investigation into machine learning-based performance prediction and adaptive control for Hyperledger Fabric networks.**
 
-[![Status](https://img.shields.io/badge/status-research--in--progress-yellow)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
-[![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8)]()
-[![Docker](https://img.shields.io/badge/docker-required-2496ED)]()
+[![Status](https://img.shields.io/badge/status-research--in--progress-yellow.svg)](https://github.com/AryanPrasad-5/AI-Assisted-Permissioned-Blockchain-Architecture-)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](pyproject.toml)
+[![Architecture](https://img.shields.io/badge/architecture-multi--dataset-informational.svg)](docs/dataset_catalog.md)
+[![Tests](https://img.shields.io/badge/tests-6%2F6%20passing-brightgreen.svg)](tests/)
+
+---
+
+## Authors & Project Metadata
+
+- **Authors**: Aryan Prasad & Anuj Patel
+- **Year**: 2026
+- **Project Type**: Undergraduate Research Project
+- **Repository**: [AryanPrasad-5/AI-Assisted-Permissioned-Blockchain-Architecture-](https://github.com/AryanPrasad-5/AI-Assisted-Permissioned-Blockchain-Architecture-)
+- **Current Milestone**: Milestone 0 Completed &bull; Next: `feature/dataset-audit` (HFBTP Audit)
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Research Question](#research-question)
-- [System Architecture](#system-architecture)
-- [Scope and Boundaries](#scope-and-boundaries)
-- [Simulated Participants](#simulated-participants)
-- [Experimental Design](#experimental-design)
-- [Metrics](#metrics)
+- [Research Problem & Motivation](#research-problem--motivation)
+- [Research Architecture & Pipeline](#research-architecture--pipeline)
+- [Multi-Dataset Strategy](#multi-dataset-strategy)
+- [Comparison of Control Paradigms](#comparison-of-control-paradigms)
 - [Repository Structure](#repository-structure)
-- [Getting Started](#getting-started)
-- [Reproducing Experiments](#reproducing-experiments)
-- [Tech Stack](#tech-stack)
-- [Research Deliverables](#research-deliverables)
-- [Research Integrity](#research-integrity)
-- [Roadmap](#roadmap)
-- [Limitations](#limitations)
-- [Contributors](#contributors)
-- [Contributing](#contributing)
-- [License](#license)
-- [Citation](#citation)
+- [Interactive Research Roadmap](#interactive-research-roadmap)
+- [Methodology & Evaluation Safeguards](#methodology--evaluation-safeguards)
+- [Installation & Reproducibility](#installation--reproducibility)
+- [Git Workflow (No Dev Branch)](#git-workflow-no-dev-branch)
+- [Current Project Status](#current-project-status)
+- [How to Cite This Work](#how-to-cite-this-work)
+- [References & Acknowledgments](#references--acknowledgments)
 
 ---
 
 ## Overview
 
-Cross-border payment settlement requires reliable transaction processing, controlled participation, auditability, and settlement finality across multiple financial institutions. Permissioned blockchains are well suited to this problem because participants operate within a controlled network with known identities and defined governance — but performance can degrade significantly as transaction workload increases, leading to higher latency, lower throughput, queue buildup, and increased resource utilization.
+Permissioned blockchain architectures, such as **Hyperledger Fabric**, offer high throughput, data privacy, and deterministic transaction settlement for consortium use cases (e.g., cross-border interbank clearing). However, system performance is acutely sensitive to runtime transaction arrival patterns and underlying ledger configurations (such as block batch size, timeout intervals, and endorsement constraints).
 
-This project builds a small, reproducible experimental environment to test whether an **AI-assisted adaptive mechanism** — observing live workload and system conditions — can recommend or apply changes that improve transaction-processing performance, compared against a blockchain baseline with no AI involvement.
+This research investigates whether **machine learning models** trained on empirical workload benchmarks can:
+1. **Accurately predict** transaction throughput (TPS) and average commit latency.
+2. **Drive adaptive control decisions** to proactively tune network configurations, mitigating latency degradation under dynamic workloads without destabilizing consensus.
 
-This is a **research benchmark and prototype**, not a production system. It does not process real money, connect to real banking infrastructure, or make production-readiness claims.
+> [!NOTE]
+> **Research Disclaimer**: This repository documents an ongoing undergraduate scientific investigation. Models, performance predictions, and adaptive mechanisms are subject to empirical evaluation against real benchmark files. This repository does not claim validated performance gains until rigorous, cross-validated experiments are completed and published.
 
-## Research Question
+---
 
-> **Can AI-assisted adaptation improve transaction-processing performance in a permissioned blockchain network under varying cross-border payment workloads?**
-
-This question is provisional and may be narrowed following the literature review and research-gap analysis. The AI-assisted system is **not required to outperform the baseline** for the research to be considered a success — a well-documented negative or inconclusive result is a valid outcome.
-
-## System Architecture
+## Research Problem & Motivation
 
 ```
-Payment Client
-   │
-   ▼
-API Gateway
-   │
-   ▼
-Transaction Processing Layer
-   │
-   ▼
-Permissioned Blockchain Network ◄────────────┐
-   │                                          │
-   ▼                                          │
-Monitoring / Metrics Layer                    │
-   │                                          │
-   ▼                                          │
-AI Model                                      │
-   │                                          │
-   ▼                                          │
-Adaptive Decision Mechanism ──────────────────┘
+Workload Fluctuations (Arrival Rate, Payload)
+                      │
+                      ▼
+┌──────────────────────────────────────────────┐
+│  Hyperledger Fabric Transaction Lifecycle    │
+│  (Endorsement ➔ Ordering ➔ Validation/Commit)│
+└──────────────────────────────────────────────┘
+                      │
+         Sensitivity to Configuration:
+         • Batch Size (MaxMessageCount)
+         • Batch Timeout (BatchTimeout)
+                      │
+       ┌──────────────┴──────────────┐
+       ▼                             ▼
+Static Configuration Failure    Dynamic Operating Window
+• Too small: Orderer bottleneck • Low latency & high throughput
+• Too large: High queue latency   require workload adaptation
 ```
 
-The blockchain network remains solely responsible for **transaction validation, ordering, consensus, ledger state, identity, auditability, and settlement/finality**. The AI component is strictly an **adaptive monitoring/control layer** — it observes system state and recommends or applies configuration/workload-handling adjustments. It does **not** replace consensus and does **not** independently approve or finalize transactions.
+### 1. Why Fixed (Static) Configurations Fail
+In Hyperledger Fabric, the ordering service packages endorsed transactions into blocks governed by channel parameters:
+- `MaxMessageCount` (Batch Size): Maximum transactions allowed per block.
+- `BatchTimeout`: Maximum duration to wait before sealing a block if the batch size is not yet reached.
 
-**Candidate AI inputs:**
+Under **low transaction arrival rates**, a large batch size causes transactions to wait for `BatchTimeout`, inflating commit latency. Under **congested burst traffic**, small batch sizes overload the ordering service with block creation overhead, exhausting network buffers and causing severe queuing delays. A static configuration cannot remain optimal across varying workload regimes.
 
-| Signal | Description |
-|---|---|
-| Transaction rate | Incoming transactions per unit time |
-| Queue length | Pending transactions awaiting processing |
-| Recent transaction latency | Rolling latency window |
-| CPU utilization | Node-level compute load |
-| Memory utilization | Node-level memory load |
-| Pending transactions | Backlog size |
-| Historical workload | Recent workload trend |
+### 2. Reactive vs. Predictive Adaptation
+- **Reactive Control**: Monitors observed performance degradation (e.g., high queue depth or latency spikes) and triggers configuration adjustments post-facto. While simple, reactive control suffers from delayed response times, transient performance collapse, and configuration flapping during settling intervals.
+- **Predictive Control**: Employs ML models to forecast upcoming throughput, latency, or overload risks based on arrival trends and operational state, proactively adjusting parameters before performance degrades.
 
-The exact AI task, model family, and adaptive mechanism will be finalized after the literature review.
+### 3. Core Research Question
+> *Can an ML-assisted predictive controller anticipate transaction congestion in Hyperledger Fabric and proactively optimize configuration parameters more effectively than fixed baseline configurations or threshold-based reactive controllers?*
 
-## Scope and Boundaries
+---
 
-**In scope**
+## Research Architecture & Pipeline
 
-- Permissioned blockchain experimental testbed
-- Simulated financial institutions and synthetic cross-border transactions
-- Reproducible, controllable workload generation
-- A baseline system (no AI) and an AI-assisted comparative system
-- Controlled experiments across multiple workload profiles
-- Statistical comparison, error analysis, and reproducibility artifacts
+The pipeline spans data ingestion, rigorous schema auditing, leak-free evaluation, regression modeling, and multi-paradigm controller comparison:
 
-**Out of scope**
+```mermaid
+flowchart TD
+    subgraph DataLayer ["1. Data Ingestion & Manifests"]
+        D1["HFBTP Dataset\n(Initial Development)"] --> M1["Provenance Manifest\n(data/manifests/hfbtp_manifest.yaml)"]
+        D2["MMBPD Dataset\n(Independent Eval)"] --> M2["Provenance Manifest\n(data/manifests/mmbpd_manifest.yaml)"]
+        D3["Future Testbed Telemetry\n(Planned)"] --> M3["Local Traces\n(fabric-testbed/telemetry/)"]
+    end
 
-- Real-money transactions or real banking integration
-- Production financial deployment or production-readiness claims
-- Claims that the project solves cross-border payments universally
-- Claims of universal AI superiority
-- AI replacing blockchain consensus or independently finalizing transactions
-- Fabricated or manually invented experimental results
-- Features added solely for demonstration or portfolio purposes
+    subgraph AuditLayer ["2. Data Auditing & Exploration"]
+        M1 --> A1["Schema & Integrity Audit\n(notebooks/01_dataset_audit.ipynb)"]
+        M2 -.-> A2["Cross-Dataset Compatibility Audit\n(Pending)"]
+        A1 --> E1["Exploratory Data Analysis & Surfaces\n(notebooks/02_eda.ipynb)"]
+    end
 
-## Simulated Participants
+    subgraph EvalLayer ["3. Leakage-Safe Evaluation Protocol"]
+        E1 --> S1["Configuration-Aware Splitter\n(GroupKFold / Leave-Config-Out)"]
+        S1 --> S2["Strict Isolation:\nTrain / Validation / Test"]
+    end
 
-| Node | Role |
-|---|---|
-| Bank A | Simulated institution — India |
-| Bank B | Simulated institution — Singapore |
-| Bank C | Simulated settlement institution |
-| Bank D | Simulated verification / regulatory node |
+    subgraph ModelLayer ["4. Predictive Modeling Engine"]
+        S2 --> B1["Regression Baselines\n(Linear, Ridge, Decision Tree)"]
+        S2 --> B2["Ensemble & Non-Linear Models\n(Random Forest, Gradient Boosting)"]
+        B1 --> P1["Throughput & Latency Predictors\n(src/fabric_perf/models/)"]
+        B2 --> P1
+    end
 
-All participants are simulated entities for experimental purposes only.
+    subgraph ControlLayer ["5. Multi-Paradigm Controller Comparison"]
+        P1 --> C1["Static Controller\n(Fixed Baseline Params)"]
+        P1 --> C2["Reactive Controller\n(Threshold-Triggered Rules)"]
+        P1 --> C3["Predictive Controller\n(Proactive ML Optimization)"]
+    end
 
-## Experimental Design
+    subgraph ValidationLayer ["6. Testbed & Empirical Reporting"]
+        C1 & C2 & C3 --> V1["Local Fabric Testbed Experiments\n(fabric-testbed/ - Docker / Caliper)"]
+        V1 --> R1["Comparative Evaluation & Paper Report\n(docs/research_plan.md)"]
+    end
 
-**Baseline** — the permissioned blockchain network operating with no AI-assisted adaptive mechanism.
+    style DataLayer fill:#f8f9fa,stroke:#6c757d,stroke-width:1px
+    style AuditLayer fill:#e9ecef,stroke:#495057,stroke-width:1px
+    style EvalLayer fill:#e7f5ff,stroke:#1971c2,stroke-width:1px
+    style ModelLayer fill:#e6fcf5,stroke:#0ca678,stroke-width:1px
+    style ControlLayer fill:#fff9db,stroke:#f59f00,stroke-width:1px
+    style ValidationLayer fill:#f3f0ff,stroke:#7950f2,stroke-width:1px
+```
 
-**Proposed system** — the identical environment with the AI-assisted adaptive mechanism enabled.
+*Note: Shaded layers represent the progressive milestones of this project. Only Milestone 0 (foundation & contracts) is currently completed.*
 
-**Workload profiles**
+---
 
-- Low transaction workload
-- Medium transaction workload
-- High transaction workload
-- Congested workload
-- Sudden workload-spike scenario (where feasible)
+## Multi-Dataset Strategy
 
-Baseline and proposed systems are evaluated under **matched** conditions: identical workloads, hardware, blockchain configuration, experiment duration, transaction inputs, repetition count, and measurement procedure.
+To prevent overfitting to a single experimental setup, the repository explicitly decouples dataset ingestion and enforces independent evaluation:
 
-## Metrics
+| Dataset | Intended Role | Status | Description |
+|---|---|---|---|
+| **HFBTP** | Initial Audit & Development | **Initial Dataset** | Static benchmark grid used for schema auditing, exploratory analysis, and initial baseline model formulation. |
+| **MMBPD** | Independent Evaluation | **Pending Compatibility Audit** | Held-out benchmark dataset reserved exclusively for testing cross-dataset generalization and transferability. |
+| **Future Datasets** | Local Testbed Validation | **Planned** | Custom time-series benchmark traces collected directly from local Hyperledger Fabric experiments. |
 
-**System performance**
+<details>
+<summary><strong>Data Governance, Provenance & Registration Protocols (Click to Expand)</strong></summary>
 
-- Average / median transaction latency
-- P95 / P99 latency
-- Throughput
-- Transaction success and failure rate
-- Queue length
-- CPU and memory utilization
-- Confirmation / finality time (where measurable)
+### 1. Immutability of Raw Data
+All files deposited in [`data/raw/`](data/raw/) are strictly read-only and never modified. Transformations, feature derivations, and splits are written strictly to [`data/interim/`](data/interim/) or [`data/processed/`](data/processed/).
 
-**AI performance** — dependent on the final AI task; may include prediction accuracy, decision latency, and compute cost.
+### 2. Provenance Manifest Schema
+Every registered dataset must possess a valid YAML manifest adhering to [`data/manifests/manifest_schema.json`](data/manifests/manifest_schema.json). Required metadata fields include:
+- `dataset_id`: Unique key (`hfbtp`, `mmbpd`).
+- `source_url` & `citation`: Literature reference.
+- `raw_files`: List of files accompanied by cryptographic SHA256 checksums.
+- `target_variables`: Documented physical units (`tps`, `ms`, `s`).
+- `experimental_setup`: Benchmark tool, blockchain version, consensus type, and replication counts.
 
-**Analysis**
+### 3. No Blind Dataset Pooling
+Datasets originating from different testbeds cannot be merged blindly. Varying hardware topologies, consensus configurations, transaction payload sizes, and measurement harnesses alter performance scales. Datasets are treated as distinct domains for zero-shot or few-shot cross-evaluation.
 
-- Statistical comparison with confidence intervals where appropriate
-- Error and failure-case analysis
-- Ablation / sensitivity analysis (should-have)
+### 4. Common Loader Interface
+All dataset loaders inherit from [`BaseDatasetLoader`](src/fabric_perf/data/base.py), guaranteeing a standardized contract:
+```python
+from fabric_perf.data import BaseDatasetLoader
+
+class CustomDatasetLoader(BaseDatasetLoader):
+    def load_raw(self) -> pd.DataFrame: ...
+    def validate_schema(self, df: pd.DataFrame) -> dict: ...
+    def get_feature_names(self) -> list[str]: ...
+    def get_target_names(self) -> list[str]: ...
+```
+
+For complete dataset registration instructions, refer to [`data/README.md`](data/README.md) and [`docs/dataset_catalog.md`](docs/dataset_catalog.md).
+</details>
+
+---
+
+## Comparison of Control Paradigms
+
+This research evaluates three distinct operational philosophies for Hyperledger Fabric parameter management:
+
+| Attribute | 1. Static Approach | 2. Reactive Approach | 3. Predictive Approach |
+|---|---|---|---|
+| **Control Mechanism** | Fixed channel parameters selected prior to execution. | Rule-based heuristics triggered after observed metric threshold breach. | Proactive ML regression models forecasting near-future throughput & latency. |
+| **Operational Advantages** | Zero runtime computational or monitoring overhead; zero risk of controller oscillation. | Responds to sustained operational shifts without requiring offline model training. | Preempts saturation collapse; adjusts batch configuration before queue buildup occurs. |
+| **Inherent Limitations** | Highly sub-optimal outside the calibrated workload regime. | Lagged response; cannot prevent initial latency spikes; prone to parameter hunting. | Inference computational overhead; risks sub-optimal tuning if model suffers distribution shift. |
+| **Evaluation Requirements** | Matched baseline runs across low, medium, and congested workload curves. | Tuning threshold values ($\tau_{queue}$, $\tau_{latency}$) and cooldown intervals. | Regression accuracy (MAE, RMSE, $R^2$) + operational evaluation in simulated/live testbed. |
+| **Current Status** | Interface stubbed ([`StaticController`](src/fabric_perf/controllers/base.py)) | Interface stubbed ([`ReactiveController`](src/fabric_perf/controllers/base.py)) | Interface stubbed ([`PredictiveController`](src/fabric_perf/controllers/base.py)) |
+
+> [!IMPORTANT]
+> **Prediction Accuracy &ne; Control Effectiveness**:
+> High ML accuracy (e.g., $R^2 > 0.95$) is a prerequisite, but it does **not** prove an operational controller will improve a live blockchain network. Dynamic factors—including channel reconfiguration transaction delays, endorsement latencies, and actuation overhead—must be evaluated experimentally on a running network.
+
+---
 
 ## Repository Structure
 
+The repository maintains strict separation between immutable data, declarative configurations, reusable Python package logic, and ephemeral experiment outputs:
+
 ```text
-.
-├── README.md               # Research project overview and reproduction instructions
-├── .gitignore              # Research-grade ignore rules (excluding raw data & model weights)
-├── requirements.txt        # Pinned Python package dependencies
-├── pyproject.toml          # PEP 517/621 project configuration and pytest setup
-├── LICENSE                 # MIT License
-├── data/                   # Data layer: raw, interim, processed datasets & manifests
-│   ├── README.md           # Acquisition, licensing, and dataset registration manual
-│   ├── raw/                # Immutable original datasets (HFBTP, MMBPD, external)
-│   ├── interim/            # Intermediate transformations
-│   ├── processed/          # ML-ready feature matrices
-│   └── manifests/          # Formal metadata and provenance manifests
-├── configs/                # Reproducible YAML experiment and model configurations
-│   ├── datasets/           # Dataset loading and split configurations
-│   ├── experiments/        # End-to-end experiment pipeline specs
-│   └── models/             # ML model architectures and hyperparameters
-├── notebooks/              # Sequential research notebooks (01_audit to 05_comparison)
-├── src/                    # Source package: fabric_perf
+AI-Assisted-Permissioned-Blockchain-Architecture-/
+├── .gitignore                      # Excludes raw datasets, virtual envs, caches, model weights
+├── README.md                       # Project overview and research documentation
+├── pyproject.toml                  # PEP 517/621 packaging specifications & test configuration
+├── requirements.txt                # Pinned dependencies
+├── LICENSE                         # MIT License
+│
+├── data/                           # Multi-dataset storage (local data excluded from git)
+│   ├── README.md                   # Data registration manual and provenance instructions
+│   ├── manifests/                  # Dataset metadata specifications & JSON schema
+│   │   ├── manifest_schema.json    # JSON schema for dataset provenance validation
+│   │   ├── hfbtp_manifest.yaml     # Registration manifest for HFBTP
+│   │   └── mmbpd_manifest.yaml     # Registration manifest for MMBPD
+│   ├── raw/                        # Immutable raw benchmark downloads (git-ignored)
+│   │   ├── hfbtp/                  # HFBTP raw benchmarks (.gitkeep)
+│   │   ├── mmbpd/                  # MMBPD raw benchmarks (.gitkeep)
+│   │   └── external/               # Reference datasets (.gitkeep)
+│   ├── interim/                    # Cleaned intermediate artifacts (.gitkeep)
+│   └── processed/                  # Feature matrices ready for model consumption (.gitkeep)
+│
+├── configs/                        # Declarative YAML configurations
+│   ├── datasets/                   # Dataset loader & feature splitting specs (hfbtp.yaml, mmbpd.yaml)
+│   ├── experiments/                # End-to-end pipeline execution configs (baseline_template.yaml)
+│   └── models/                     # Model architecture and hyperparameter configs (regression_template.yaml)
+│
+├── notebooks/                      # Sequential research exploration notebooks
+│   └── README.md                   # Progression guide: 01_audit to 05_comparison
+│
+├── src/                            # Reusable core library: fabric_perf
 │   └── fabric_perf/
-│       ├── data/           # Dataset loaders implementing BaseDatasetLoader
-│       ├── features/       # Feature engineering & transformers
-│       ├── models/         # Performance prediction models (regression & ensembles)
-│       ├── evaluation/     # Group/configuration-aware splitters and metrics
-│       ├── controllers/    # Static, reactive, and predictive controllers
-│       └── utils/          # Reproducibility seeds, logging, helpers
-├── tests/                  # Unit and integration test suite
-├── experiments/            # Experiment artifacts (results, figures, run logs)
-├── fabric-testbed/         # Controlled local Hyperledger Fabric network & Caliper setup
-└── docs/                   # Academic documentation and research protocols
-    ├── research_plan.md    # Phased research plan and milestone map
-    ├── dataset_catalog.md  # Multi-dataset registry and provenance records
-    ├── methodology.md      # Mathematical formulation of the 3 control paradigms
-    └── evaluation_protocol.md # Leakage-safe evaluation & splitting protocols
+│       ├── __init__.py             # Package version (__version__ = "0.1.0")
+│       ├── data/                   # Dataset loaders implementing BaseDatasetLoader
+│       │   ├── base.py             # Abstract base loader interface
+│       │   ├── hfbtp.py            # HFBTP loader & schema auditor
+│       │   └── mmbpd.py            # MMBPD loader & schema auditor
+│       ├── features/               # Feature engineering & scaling pipelines
+│       ├── models/                 # Model abstractions & wrappers (BasePerformanceModel)
+│       ├── evaluation/             # Leakage prevention & metrics
+│       │   ├── metrics.py          # MAE, RMSE, R2, safe MAPE implementations
+│       │   └── splitters.py        # Configuration-aware GroupShuffleSplit logic
+│       ├── controllers/            # Control paradigm implementations
+│       │   └── base.py             # Static, Reactive, and Predictive controller classes
+│       └── utils/                  # Reproducibility seeds and structured logging
+│           ├── logging.py          # Standardized research console logger
+│           └── seeds.py            # Global seed_everything utility
+│
+├── tests/                          # Automated unit and contract test suite
+│   ├── __init__.py                 # Test configuration ensuring src/ resolution
+│   ├── test_imports.py             # Package import and metadata test
+│   └── test_data_contract.py       # Data contract, controller, and metrics tests
+│
+├── experiments/                    # Local experiment outputs (git-ignored)
+│   ├── README.md                   # Directory documentation
+│   ├── results/                    # Tabular metrics and JSON run summaries (.gitkeep)
+│   ├── figures/                    # Publication-grade PNG/PDF plots (.gitkeep)
+│   └── logs/                       # Execution run logs (.gitkeep)
+│
+├── fabric-testbed/                 # Local Hyperledger Fabric network environment (Milestone 8)
+│   ├── README.md                   # Testbed execution manual
+│   ├── configs/                    # Docker Compose & crypto material (.gitkeep)
+│   ├── workloads/                  # Caliper benchmark workloads (.gitkeep)
+│   └── telemetry/                  # Prometheus metrics traces (.gitkeep)
+│
+└── docs/                           # Formal research documentation
+    ├── research_plan.md            # Phased research plan and milestone definitions
+    ├── dataset_catalog.md          # Multi-dataset provenance catalog
+    ├── methodology.md              # Mathematical formulation of the 3 control paradigms
+    └── evaluation_protocol.md      # Leakage-safe evaluation & splitting protocols
 ```
 
-## Git Branch Strategy (No `dev` Branch)
+---
 
-To ensure linear, reproducible research history, we avoid long-lived unstructured development branches:
+## Interactive Research Roadmap
 
-- **`main`**: Always contains stable, reproducible code, verified documentation, and passed test suites.
-- **Short-Lived Feature Branches**: Created from `main` for one specific milestone, tested, and merged directly back into `main`:
-  - `feature/dataset-audit`: Audit and validate HFBTP & MMBPD raw schemas.
-  - `feature/eda`: Exploratory data analysis and response surfaces.
-  - `feature/evaluation-protocol`: Leakage-safe splitting implementations.
-  - `feature/baseline-models`: Linear regression and decision tree baselines.
-  - `feature/model-training`: Advanced models and hyperparameter tuning.
-  - `feature/cross-dataset-validation`: Cross-dataset evaluation on MMBPD.
-  - `feature/controllers`: Static, reactive, and predictive controller implementations.
-  - `feature/fabric-testbed`: Controlled local Fabric experiments.
-  - `feature/research-report`: Final tables, figures, and publication deliverables.
+Progress is tracked via sequential research milestones. Each milestone is executed on an isolated feature branch and merged directly into `main` upon verification:
 
-## Getting Started
+- [x] **Milestone 0: Repository Architecture & Contracts**
+  - Scaffold clean multi-dataset directory structure.
+  - Implement `BaseDatasetLoader`, `BasePerformanceModel`, and `BaseController` interfaces.
+  - Configure `.gitignore`, `pyproject.toml`, and strict reproducibility utilities.
+  - Implement unit and contract test suite (verified 6/6 tests passing).
+- [ ] **Milestone 1: HFBTP Dataset Audit & Registration** (`feature/dataset-audit`)
+  - Acquire raw HFBTP benchmark files into `data/raw/hfbtp/`.
+  - Validate column types, missingness, duplicate parameter cells, and checksums.
+  - Verify whether HFBTP is a static parameter grid (replications, timestamps).
+  - Execute [`notebooks/01_dataset_audit.ipynb`](notebooks/).
+- [ ] **Milestone 2: Exploratory Data Analysis & Surfaces** (`feature/eda`)
+  - Map throughput and latency response surfaces across transaction arrival rates.
+  - Characterize non-linear saturation knee-points and queuing cliffs.
+  - Execute [`notebooks/02_eda.ipynb`](notebooks/).
+- [ ] **Milestone 3: Leakage-Safe Evaluation Protocol** (`feature/evaluation-protocol`)
+  - Implement configuration-aware and group-aware cross-validation splitters.
+  - Formalize train/validation/test isolation rules and target leakage guards.
+- [ ] **Milestone 4: Regression Baselines** (`feature/baseline-models`)
+  - Train Linear, Ridge, and Decision Tree baseline models.
+  - Benchmark MAE, RMSE, and $R^2$ performance on unseen configuration splits.
+  - Execute [`notebooks/04_baseline_models.ipynb`](notebooks/).
+- [ ] **Milestone 5: Advanced Model Training & Tuning** (`feature/model-training`)
+  - Train Random Forests, Gradient Boosted Trees (XGBoost/LightGBM).
+  - Hyperparameter optimization and residual error diagnosis.
+- [ ] **Milestone 6: Cross-Dataset Generalization on MMBPD** (`feature/cross-dataset-validation`)
+  - Audit MMBPD schema compatibility against HFBTP features and target units.
+  - Evaluate out-of-domain generalization and transferability.
+- [ ] **Milestone 7: Static, Reactive & Predictive Controllers** (`feature/controllers`)
+  - Implement reactive threshold rules and proactive ML-driven controller logic.
+  - Benchmark control decision latency and oscillation stability.
+- [ ] **Milestone 8: Controlled Local Fabric Testbed Experiments** (`feature/fabric-testbed`)
+  - Deploy local Hyperledger Fabric network with Caliper workload generation.
+  - Measure live adaptive response under bursty and fluctuating workloads.
+- [ ] **Milestone 9: Research Report & Final Analysis** (`feature/research-report`)
+  - Synthesize statistical comparisons, error analysis, and publication-ready figures.
 
-### 1. Environment Setup (Local Laptop)
+---
 
+## Methodology & Evaluation Safeguards
+
+### 1. Regression Metrics
+Performance prediction models are evaluated independently on both target variables ($T$: Throughput, $L$: Latency):
+- **Mean Absolute Error (MAE)**: Measures average prediction error in physical units (TPS or milliseconds).
+- **Root Mean Squared Error (RMSE)**: Penalizes large outlier errors, critical for anticipating latency spikes.
+- **Coefficient of Determination ($R^2$)**: Quantifies proportion of variance explained by the model relative to the mean.
+- **Mean Absolute Percentage Error (MAPE)**: Normalized metric to facilitate cross-scale comparison.
+
+### 2. Leakage-Safe Data Splitting
+Standard random splits (`train_test_split(shuffle=True)`) create severe **data leakage** in benchmark datasets because identical or neighboring configuration cells appear in both training and test sets. 
+
+To prevent synthetic score inflation:
+- **Configuration-Aware Splitting**: Observations are grouped by parameter settings (`batch_size`, `batch_timeout`) using [`GroupShuffleSplit`](src/fabric_perf/evaluation/splitters.py). Entire configuration cells are reserved exclusively for either training or testing.
+- **Target Leakage Prohibition**: Contemporaneous measured throughput is strictly prohibited as a feature when predicting latency, as it is an unmeasured outcome at prediction time.
+
+### 3. Controller Operational Evaluation
+When comparing controllers ([`StaticController`](src/fabric_perf/controllers/base.py), [`ReactiveController`](src/fabric_perf/controllers/base.py), [`PredictiveController`](src/fabric_perf/controllers/base.py)), ML accuracy is complemented by operational system metrics:
+- **Delivered Throughput**: Total committed transactions per unit time.
+- **Average & Tail Latency**: P50, P95, and P99 transaction latencies.
+- **SLA Violation Rate**: Percentage of time latency exceeds a defined operational threshold.
+- **Oscillation Index**: Frequency of channel configuration updates (penalizing controller flapping).
+
+For details, refer to [`docs/methodology.md`](docs/methodology.md) and [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md).
+
+---
+
+## Installation & Reproducibility
+
+### Prerequisites
+- **Python**: Version 3.10 or higher (Tested on Python 3.14)
+- **Git**: Installed and configured
+- **OS**: Windows (PowerShell), Linux, or macOS
+
+### 1. Clone the Repository
 ```powershell
-# Open Windows PowerShell in repository directory
-cd d:\Reseach_Model\AI-Assisted-Permissioned-Blockchain-Architecture-
+git clone https://github.com/AryanPrasad-5/AI-Assisted-Permissioned-Blockchain-Architecture-.git
+cd AI-Assisted-Permissioned-Blockchain-Architecture-
+```
 
+### 2. Environment Setup (Windows PowerShell)
+```powershell
 # Create virtual environment
 python -m venv .venv
 
@@ -228,95 +375,128 @@ python -m venv .venv
 pip install -e .[dev]
 ```
 
-### 2. Verify Installation & Test Suite
+<details>
+<summary><strong>Linux / macOS Bash Setup Instructions (Click to Expand)</strong></summary>
 
+```bash
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install package in editable mode
+pip install -e .[dev]
+```
+</details>
+
+### 3. Execute Automated Test Suite
+Verify that all data contracts, package imports, controllers, and evaluation metrics pass:
 ```powershell
-pytest
+python -m unittest discover -s tests -v
+```
+*(Or run `pytest` if installed in your environment)*
+
+**Expected Result:**
+```text
+test_loader_inheritance (test_data_contract.TestDataContract.test_loader_inheritance) ... ok
+test_loader_schema_audit (test_data_contract.TestDataContract.test_loader_schema_audit) ... ok
+test_metrics_calculation (test_data_contract.TestDataContract.test_metrics_calculation) ... ok
+test_seed_reproducibility (test_data_contract.TestDataContract.test_seed_reproducibility) ... ok
+test_static_controller (test_data_contract.TestDataContract.test_static_controller) ... ok
+test_package_metadata (test_imports.TestImports.test_package_metadata) ... ok
+
+Ran 6 tests in 0.044s
+OK
 ```
 
-## Tech Stack
+---
 
-| Layer | Technology (provisional) |
-|---|---|
-| Blockchain | Hyperledger Fabric (or comparable permissioned framework) |
-| Backend / API | Go |
-| AI / ML | Python, scikit-learn |
-| Benchmarking | Hyperledger Caliper (or comparable) |
-| Monitoring | Prometheus / Grafana |
-| Storage | PostgreSQL |
-| Orchestration | Docker / Docker Compose |
-| API protocols | REST and/or gRPC where justified |
+## Git Workflow (No Dev Branch)
 
-Technology choices are finalized based on research requirements, not implementation convenience or portfolio appeal.
+To preserve a linear, reproducible research history, **no long-lived `dev` branch is used**. 
 
-## Research Deliverables
+```text
+main ────────●───────────────────────────────────────────────● (Milestone Merged)
+              \                                             /
+               └── feature/dataset-audit ──●───────●───────┘
+                                        (commit) (commit)
+```
 
-- [ ] Literature review
-- [ ] Research-gap analysis
-- [ ] Final research question and hypothesis
-- [ ] System architecture
-- [ ] Permissioned blockchain testbed
-- [ ] Workload-generation pipeline
-- [ ] Baseline implementation
-- [ ] AI-assisted mechanism
-- [ ] Experimental evaluation pipeline
-- [ ] Statistical analysis and error analysis
-- [ ] Results tables and plots
-- [ ] Reproducible repository
-- [ ] Research paper
+1. **`main`**: Contains verified, reproducible milestones and passing test suites.
+2. **Short-Lived Feature Branches**: Dedicated to single, clearly scoped milestones.
 
-## Research Integrity
+### Example Workflow:
+```powershell
+# 1. Switch to main and pull latest changes
+git checkout main
+git pull origin main
 
-This project adheres to the following principles:
+# 2. Create feature branch for the specific milestone
+git checkout -b feature/dataset-audit
 
-- No fabricated results or datasets
-- No unsupported novelty or production claims
-- Negative or inconclusive results are reported honestly
-- All synthetic data is explicitly labeled as synthetic
-- Limitations are documented explicitly, not omitted
+# 3. Implement code, audit data, and run tests
+python -m unittest discover -s tests -v
 
-## Roadmap
+# 4. Stage and commit changes with descriptive messages
+git add data/manifests/hfbtp_manifest.yaml src/fabric_perf/data/hfbtp.py
+git commit -m "feat(data): audit HFBTP dataset schema and verify parameter grid"
 
-| Phase | Focus |
-|---|---|
-| 1 | Literature review & research-gap analysis |
-| 2 | Testbed & workload-generation pipeline |
-| 3 | Baseline implementation & instrumentation |
-| 4 | AI task definition & adaptive mechanism |
-| 5 | Controlled experiments across workload profiles |
-| 6 | Statistical analysis, error analysis, write-up |
+# 5. Merge directly into main upon verification
+git checkout main
+git merge feature/dataset-audit
 
-Approximate total timeline: **12 weeks**.
+# 6. Delete the completed local feature branch
+git branch -d feature/dataset-audit
 
-## Limitations
+# 7. Push updated main to GitHub
+git push origin main
+```
 
-- Results are based on synthetic, not real-world, transaction data.
-- The simulated consortium is small relative to real cross-border payment networks.
-- Findings are scoped to the tested blockchain configuration and workload profiles and should not be generalized without further study.
+---
 
-## Contributors
+## Current Project Status
 
-- [Aryan Prasad](https://github.com/AryanPrasad-5)
-- Anuj Patel
+- **Status**: Research in Progress
+- **Completed Components**:
+  - Research repository scaffold, data layers, and manifest validation schemas.
+  - Extensible Python package architecture ([`src/fabric_perf/`](src/fabric_perf/)).
+  - Unit and contract test suite passing 6/6 tests.
+  - Reproducibility documentation, research plan, and evaluation protocols.
+- **Planned / Pending Components**:
+  - Model training, hyperparameter tuning, and controller benchmarking.
+  - Caliper workload execution on local Hyperledger Fabric network.
+- **Immediate Next Task**:
+  - Milestone 1: Create `feature/dataset-audit`, register raw HFBTP benchmark files, and execute initial schema validation.
 
-## Contributing
+---
 
-This is primarily a solo/academic research project. Issues and suggestions are welcome via GitHub Issues. If you'd like to propose a change, please open an issue to discuss it before submitting a pull request.
+## How to Cite This Work
 
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
-## Citation
-
-If you reference this work, please cite it as:
+If you reference this research repository or build upon this architecture in your studies, please cite it using the following BibTeX entry:
 
 ```bibtex
 @misc{ai-adaptive-permissioned-blockchain,
   title  = {AI-Assisted Adaptive Performance in Permissioned Blockchain Networks},
-  author = { Aryan Prasad  and  Anuj Patel},
+  author = {Aryan Prasad and Anuj Patel},
   year   = {2026},
   note   = {Undergraduate research project},
   url    = {https://github.com/AryanPrasad-5/AI-Assisted-Permissioned-Blockchain-Architecture-}
 }
 ```
+
+*Note: This repository represents ongoing undergraduate research hosted on GitHub and does not claim formal peer-reviewed publication status.*
+
+---
+
+## References & Acknowledgments
+
+- **Hyperledger Fabric**: An enterprise-grade permissioned distributed ledger framework ([Documentation](https://hyperledger-fabric.readthedocs.io/)).
+- **Hyperledger Caliper**: A blockchain benchmark framework enabling execution of pre-defined workloads ([Documentation](https://hyperledger.github.io/caliper/)).
+- **Scikit-Learn**: Machine learning library in Python ([Documentation](https://scikit-learn.org/)).
+
+---
+
+<p align="center">
+  <sub>Maintained by <a href="https://github.com/AryanPrasad-5">Aryan Prasad</a> and Anuj Patel &bull; Licensed under the <a href="LICENSE">MIT License</a></sub>
+</p>
