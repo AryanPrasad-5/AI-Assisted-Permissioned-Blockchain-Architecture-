@@ -181,12 +181,12 @@ The loader now: (a) returns the verified exact headers via `get_feature_names()`
 
 ## 10. Open Questions
 
-1. **117 missing grid cells**: Which `(Set Rate, Block Size, Orderers)` combinations are absent, and why? Is this a benchmark failure, a deliberate design, or a data corruption artifact?
+1. **117 missing grid cells**: Which `(Set Rate, Block Size, Orderers)` combinations are absent, and why? Is this a benchmark failure, a deliberate design, or a data corruption artifact? *Status 2026-10-15: partly answered. The absent cells are three (block size, orderers) slots, each missing at all 39 loads: block 245 and 525 at 9 orderers, block 725 at 5 orderers (`notebooks/02_eda.ipynb`, Section 3). Why they are absent is still not documented.*
 2. **`Orderers` near-zero linear effect**: Is this because orderer count has a threshold effect or because the grid does not vary orderer count independently at high loads?
 3. **Block Size non-linearity**: Throughput shows very low linear correlation with Block Size (r=0.013), but the scatter plots from the prior EDA (in `D:\Plan_research\hfbtp_probe\outputs\`) suggest strong non-linear curves. Modeling must use non-linear methods.
 4. **Literature source**: The paper associated with this dataset has not been formally cited in the manifest. The file `D:\Plan_research\hfbtp_probe\learningchain_paper.pdf` and `paper_text.txt` likely contain the citation.
-5. **`Actual Transaction Arrival Rate` policy**: Decide definitively whether to include or exclude it as a predictor before any model training begins.
-6. **Loader column name mismatch**: `HFBTPDatasetLoader.get_feature_names()` returns incorrect names. Must be fixed before training.
+5. **`Actual Transaction Arrival Rate` policy**: Decide definitively whether to include or exclude it as a predictor before any model training begins. *Status 2026-10-15: decided by `docs/evaluation_protocol.md` §4 — it is a forbidden feature.*
+6. **Loader column name mismatch**: `HFBTPDatasetLoader.get_feature_names()` returns incorrect names. Must be fixed before training. *Status 2026-10-15: resolved, see §9 (the loader returns the exact headers).*
 
 ---
 

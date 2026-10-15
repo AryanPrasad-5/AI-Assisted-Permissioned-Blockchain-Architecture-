@@ -46,7 +46,7 @@ where $T$ is transaction throughput (TPS) and $L$ is transaction latency (second
 ## 3. Modeling Strategies
 
 ### Regression Baselines & Non-linear Learners
-- **Linear / Ridge / Lasso Regression**: Establish interpretability baselines and check for linear trends.
+- **Multiple Linear / Ridge / Lasso Regression**: Establish interpretability baselines and check for linear trends.
 - **Tree Ensembles (Random Forest, Gradient Boosting)**: Capture non-linear saturation curves (e.g., knee-points where increased transaction rate saturates ordering capacity and causes latency explosion).
 - **Multi-Output Regression vs. Chained Models**: Modeling throughput and latency jointly without leaking measured target variables into one another.
 

@@ -75,7 +75,7 @@ Each dataset must be audited before use: actual files, schema, feature and targe
 
 ### Evaluation
 
-**Prediction.** Candidate models include Linear Regression, Ridge Regression, Decision Tree, Random Forest, and gradient boosting, subject to implementation and data suitability. Candidate metrics are MAE, RMSE, and R².
+**Prediction.** Candidate models include Multiple Linear Regression, Ridge Regression, Decision Tree, Random Forest, and gradient boosting, subject to implementation and data suitability. Candidate metrics are MAE, RMSE, and R².
 
 Evaluation will follow these principles:
 
@@ -94,15 +94,26 @@ Evaluation will follow these principles:
 |---|---|
 | Dataset audit (HFBTP) | **Complete** — checksums, schema, grid coverage verified; `docs/hfbtp_audit_report.md` |
 | Data loaders & contracts | **Complete** — `src/fabric_perf/data/` with strict validation and passing tests |
-| Exploratory data analysis | **Complete** — `notebooks/02_eda.ipynb`, figures under `experiments/figures/` |
+| Exploratory data analysis | **Complete** — `notebooks/02_eda.ipynb` (ten sections, 12 figures under `experiments/figures/`) |
 | Evaluation protocol | **Implemented** — approved leakage-safe splits (T1 / T1b / T2-D0 / T3) in `src/fabric_perf/evaluation/splitters.py` |
-| Baseline models | **Complete** — Dummy / Linear / Random Forest on registered splits, `notebooks/03_hfbtp_baseline_model.ipynb` |
+| Baseline models | **Complete** — Dummy / Multiple Linear Regression (8 engineered features) / Random Forest on registered splits, `notebooks/03_hfbtp_baseline_model.ipynb` |
 | MMBPD cross-dataset evaluation | Not started — dataset acquisition & compatibility checklist pending |
-| Advanced models (HGB, quantile) | Not started — requires documented protocol extension |
+| Advanced models | HistGradientBoosting was pre-registered and run in the frozen Phase 1C experiment (planning workspace) but is not integrated into this repository; integration is a separate decision. Quantile models: not started (not a pre-registered family; adding one needs a protocol version bump) |
 | Controllers (static/reactive/predictive) | Interfaces only (`src/fabric_perf/controllers/base.py`) — no closed-loop evaluation |
 | Fabric testbed & live experiments | Not started — future phase |
 
 Findings so far are descriptive: they characterize the measured configuration-performance relationship and model generalization on historical data. They do **not** demonstrate temporal forecasting, recovery behavior, or that predictive control outperforms static or reactive control in an operational Hyperledger Fabric network.
+
+### Model Naming
+
+Two linear baselines exist in this project and must not be confused:
+
+| Display name | Predictors | Where it lives |
+|---|---|---|
+| Multiple Linear Regression (3 Raw Features, Frozen Phase 1C) | Set Transaction Arrival Rate, Block Size, Orderers | Frozen Phase 1C experiment (research-planning workspace, outside this repository) |
+| Multiple Linear Regression (8 Engineered Features) | the three raw predictors plus log10(Set), log10(Block), Block/Set, Set×Orderers and Block/Orderers, after `StandardScaler` | This repository: `fabric_perf.models.baseline`, `notebooks/03_hfbtp_baseline_model.ipynb`; model key `linear` |
+
+Both are multiple linear regression: neither is simple regression (each has more than one predictor) and neither is polynomial regression (no predictor is raised to a power). Code identifiers (`linear`, `sklearn.linear_model.LinearRegression`) and recorded result files keep their original names; display labels are defined in `fabric_perf.models.MODEL_LABELS`. In this repository's recorded results the bare identifier `linear` always means the eight-feature model. Both are ordinary least squares fits, so their predictions are not constrained to the targets' physical range: the eight-feature variant returns negative fitted latencies for 46 of the 16,458 T2-D0 training rows (an in-sample diagnostic on the training partition, documented in `notebooks/02_eda.ipynb`, Section 8, not a validation or test result).
 
 ### Repository Structure
 
@@ -141,10 +152,10 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/03_hfbtp_baseline_
 ```
 
 - The audit notebook writes `experiments/results/hfbtp_audit_report.json` (checksums, schema, grid coverage).
-- The EDA notebook writes figures to `experiments/figures/hfbtp_*.png` and `experiments/results/hfbtp_eda_summary.json`.
-- The baseline notebook evaluates the Dummy/Linear/Random-Forest ladder on the registered splits and writes `experiments/results/hfbtp_baseline_metrics.csv` and `hfbtp_baseline_run_manifest.json`.
+- The EDA notebook writes figures to `experiments/figures/hfbtp_eda_*.png` and `experiments/results/hfbtp_eda_summary.json`.
+- The baseline notebook evaluates the Dummy / Multiple Linear Regression (8 engineered features) / Random Forest ladder on the registered splits and writes `experiments/results/hfbtp_baseline_metrics.csv` and `hfbtp_baseline_run_manifest.json`.
 - The dataset must be placed at `data/raw/hfbtp/HFBTP.csv` (it is not committed to Git). Its required checksums and handling rules are in `data/raw/hfbtp/README.md` and the loader re-verifies them on every audit.
-- Tests run with `python -m pytest` (29 tests covering imports, data contracts, HFBTP loading/validation, metrics, and split integrity).
+- Tests run with `python -m pytest` (35 tests covering imports, data contracts, HFBTP loading/validation, metrics, split integrity, model naming and notebook validity).
 
 ### Citation
 

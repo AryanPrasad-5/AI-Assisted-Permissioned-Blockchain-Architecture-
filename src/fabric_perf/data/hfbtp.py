@@ -1,16 +1,16 @@
 """HFBTP dataset loader, schema validation, and audit utilities.
 
-Verified column headers (data/raw/hfbtp/HFBTP.csv, recomputed audit 2026-10-15):
+Column roles (exact headers of data/raw/hfbtp/HFBTP.csv):
     Features:  'Set Transaction Arrival Rate', 'Block Size', 'Orderers'
     Targets:   'Throughput' (tx/s), 'Avg Latency' (seconds)
     Excluded:  'Min Latency', 'Max Latency' (post-execution measurements)
     Caution:   'Actual Transaction Arrival Rate' (measured during the run; leakage
-               risk — see docs/hfbtp_audit_report.md and docs/evaluation_protocol.md)
+               risk, see docs/hfbtp_audit_report.md and docs/evaluation_protocol.md)
 
-Audit reference values (verified against the actual file, NOT assumed):
-    rows=24687, cols=8, nulls=0, duplicate rows=0, duplicate config cells=0,
-    grid 39x159x4=24804 with 117 absent cells (99.528% coverage), one observation
-    per configuration cell, no timestamps, no replications.
+Reference structure recorded by the dataset audit (notebooks/01_dataset_audit.ipynb
+recomputes it from the file): 24,687 rows x 8 columns, no nulls, no duplicate
+rows, a 39 x 159 x 4 grid of 24,804 cells of which 117 are absent, one
+observation per configuration cell, no timestamps, no replications.
 """
 
 from pathlib import Path
@@ -30,7 +30,6 @@ class HFBTPDatasetLoader(BaseDatasetLoader):
     """Loader and schema auditor for the Hyperledger Fabric Benchmark & Tuning
     Platform (HFBTP) dataset."""
 
-    # All 8 columns that must be present in a valid HFBTP file (exact headers).
     REQUIRED_COLUMNS: List[str] = [
         "Set Transaction Arrival Rate",
         "Actual Transaction Arrival Rate",
@@ -234,8 +233,8 @@ class HFBTPDatasetLoader(BaseDatasetLoader):
         }
 
     def audit(self) -> Dict[str, Any]:
-        """Full reproducible audit: checksums, schema, quality, grid, extractive
-        target ranges. Combines every check in one report dict."""
+        """Full reproducible audit: checksums, schema, quality, grid and target
+        ranges, combined in one report dict."""
         df = self.load_raw()
         report = {"dataset_id": self.dataset_id}
         report.update(self.compute_checksums())

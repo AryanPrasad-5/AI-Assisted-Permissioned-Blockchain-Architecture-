@@ -24,7 +24,7 @@ class TestDataContract(unittest.TestCase):
         loader = HFBTPDatasetLoader(dummy_dir)
         self.assertEqual(loader.dataset_id, "hfbtp")
 
-        # Use real HFBTP column headers verified during audit 2026-10-14
+        # Exact HFBTP column headers.
         df = pd.DataFrame({
             "Set Transaction Arrival Rate": [10.0, 50.0, 100.0],
             "Actual Transaction Arrival Rate": [10.1, 50.2, 99.8],
@@ -41,7 +41,6 @@ class TestDataContract(unittest.TestCase):
         self.assertFalse(report["has_nulls"])
         self.assertIn("Throughput", report["columns"])
         self.assertIn("Avg Latency", report["columns"])
-        # All required columns present: schema should be valid
         self.assertTrue(report["schema_valid"])
         self.assertEqual(report["missing_required_columns"], [])
 

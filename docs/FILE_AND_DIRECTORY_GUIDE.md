@@ -56,7 +56,7 @@ AI-Assisted-Permissioned-Blockchain-Architecture-
 | `data/README.md` | Supporting | Dataset registration rules: raw immutability, no blind pooling, manifest requirements. |
 | `data/raw/hfbtp/HFBTP.csv` | Supporting (data) | The raw dataset. **24,687 rows × 8 cols; MD5 `E9275C49A2D7DC1F2A4015B6D8B28482`; SHA-256 `CE295D64…82BD5E`.** Never modified; re-verified on every audit. |
 | `data/raw/hfbtp/README.md` | Supporting | Provenance (LearningChain paper, Fabric 2.3 + Caliper 0.5.0), verified identity, handling rules. |
-| `data/processed/hfbtp/.gitkeep` | Placeholder | Reserved reproducible-outputs location; currently empty by design. |
+| `data/processed/.gitkeep` | Placeholder | Reserved reproducible-outputs location; currently empty by design. |
 | `data/manifests/hfbtp_manifest.yaml` | Supporting | Canonical dataset identity: checksums, exact column roles (features/targets/excluded/caution), grid dimensions, quality findings. Referenced by the audit report. |
 | `data/manifests/manifest_schema.json` | Supporting | JSON-Schema for manifests (shape validation). |
 | `data/manifests/mmbpd_manifest.yaml` | Supporting | MMBPD placeholder manifest — purposeful future-stage registration stub (units must be verified before any merging). |
@@ -75,7 +75,7 @@ No code writes to `data/raw/`. The loader only ever **reads and re-verifies** it
 | `data/hfbtp.py` | Implemented | The dataset contract: `HFBTPDatasetLoader` — schema validation with informative missing-column errors, strict dtypes check, never drops rows, `compute_checksums()`, `describe_grid()`, `audit()`, value-range counts, role lists (features/targets/excluded/caution). | `data/raw/hfbtp/` | audit dicts (read-only) | `data/base.py` |
 | `evaluation/splitters.py` | Implemented | Approved protocol splits with hard integrity checks: `t1_interior_band_split` (test [210-305]), `t1b_right_edge_band_split` (train ≤605, val [610-705], test [710-800]), `t2_d0_workload_split` (test {30,140}, highest trained level 145), `t3_orderer_split` ({3,7}→{5,9}), plus generic `create_configuration_aware_split` for exploratory use. Verifies band completeness, row disjointness, partition sums at construction. | DataFrame w/ HFBTP columns | (train, val, test, info) tuples | — |
 | `evaluation/metrics.py` | Implemented | `calculate_regression_metrics`: MAE, RMSE, R², guarded MAPE with prefix support. | arrays | metric dict | sklearn |
-| `models/baseline.py` | Implemented | Feature engineering (`add_engineered_features`: log_set_rate, log_block_size, block_per_unit_load, set_x_orderers, block_over_orderers), leakage-guarded `separate_features_targets` (asserts whitelist contains no post-execution column), `build_pipeline` for {dummy_median, linear, random_forest}, `fit_and_evaluate`, `run_all_baselines`. Preprocessing lives inside sklearn Pipelines → fitted on train only. | split DataFrames | metrics dicts / fitted pipes | sklearn, `evaluation/metrics` |
+| `models/baseline.py` | Implemented | Feature engineering (`add_engineered_features`: log_set_rate, log_block_size, block_per_unit_load, set_x_orderers, block_over_orderers), leakage-guarded `separate_features_targets` (asserts whitelist contains no post-execution column), `build_pipeline` for {dummy_median, linear, random_forest} (stable identifiers; `linear` is Multiple Linear Regression (8 Engineered Features), display names in `MODEL_LABELS`), `fit_and_evaluate`, `run_all_baselines`. Preprocessing lives inside sklearn Pipelines → fitted on train only. | split DataFrames | metrics dicts / fitted pipes | sklearn, `evaluation/metrics` |
 | `models/base.py` | Placeholder | `BasePerformanceModel` interface (fit/predict/save/load) reserved for later-stage model wrapping. | — | — | — |
 | `controllers/base.py` | Placeholder | `BaseController`/`StaticController` abstract interfaces only — **no closed-loop logic exists**. Kept as the documented seam where the planned testbed stage plugs in. | — | — | — |
 | `data/mmbpd.py` | Placeholder | Minimal MMBPD loader shell; registration stub matching the manifest. No MMBPD data exists yet. | — | — | — |
@@ -92,8 +92,8 @@ Run in order. Each was executed against the real CSV and ships with its outputs.
 | Notebook | What it does (1st-person) | Reads | Writes |
 |---|---|---|---|
 | `01_dataset_audit.ipynb` | Recomputed identity, schema, grid coverage, missing-cell structure, divergence flags; asserts all audit reference values; persists the audit. | CSV + loader | `experiments/results/hfbtp_audit_report.json` |
-| `02_eda.ipynb` | Distributions, load-response curves, block-size latency inverted-U + 2 s timeout shelf, correlation limits, orderer-under-load effect, trade-off scatter, flags; descriptive-only language. | CSV + loader | 6 figures + `hfbtp_eda_summary.json` |
-| `03_hfbtp_baseline_model.ipynb` | Builds the four registered splits, asserts protocol reference counts, trains Dummy/Linear/RF on both targets, reports per-split tables, saves the run manifest with seed/versions/split definitions. | CSV + loader + splitters + models | `hfbtp_baseline_metrics.csv`, `hfbtp_baseline_run_manifest.json`, 2 figures |
+| `02_eda.ipynb` | Ten-section EDA: dataset identity and structure, data quality and coverage, univariate distributions, workload-performance response, load × block-size and orderer interactions, correlations with their limits, exploratory Multiple Linear Regression diagnostics (T2-D0 training partition only), implications for model selection, limitations; descriptive-only language. | CSV + loader + T2-D0 splitter + models | 12 figures (`hfbtp_eda_01` to `hfbtp_eda_12`) + `hfbtp_eda_summary.json` |
+| `03_hfbtp_baseline_model.ipynb` | Builds the four registered splits, asserts protocol reference counts, trains Dummy / Multiple Linear Regression (8 engineered features) / RF on both targets, reports per-split tables, saves the run manifest with seed/versions/split definitions. | CSV + loader + splitters + models | `hfbtp_baseline_metrics.csv`, `hfbtp_baseline_run_manifest.json`, 2 figures |
 
 `notebooks/README.md` documents execution order and reproducibility rules.
 
@@ -104,10 +104,12 @@ Run in order. Each was executed against the real CSV and ships with its outputs.
 | Path | Contents |
 |---|---|
 | `results/hfbtp_audit_report.json` | Machine-readable audit incl. checksum matches and coverage. |
-| `results/hfbtp_eda_summary.json` | Target summaries, correlations, flagged-row counts, interpretation note. |
+| `results/hfbtp_eda_summary.json` | Manifest checks, quality flags, skew/kurtosis, correlations, orderer-spread and block-size-plateau summaries, in-sample exploratory fit metrics (T2-D0 training rows), interpretation note. |
 | `results/hfbtp_baseline_metrics.csv` | 24 rows: 4 splits × 3 models × 2 targets (MAE/RMSE/R² val+test). |
 | `results/hfbtp_baseline_run_manifest.json` | Seed, library versions, dataset MD5+SHA256, feature list, RF params, full split definitions, interpretation limits. |
-| `figures/hfbtp_*.png` | 8 figures (audit/EDA/baseline). |
+| `figures/hfbtp_eda_*.png` | 12 EDA figures (notebook 02). |
+| `figures/hfbtp_baseline_*.png` | 2 baseline figures (notebook 03). |
+| `figures/_archive_eda_v1/`, `results/_archive_eda_v1/` | Outputs of the previous EDA notebook (6 figures and a summary JSON), kept unchanged for reference. |
 
 Regenerate everything with the three `nbconvert --execute` commands in the README.
 
@@ -136,6 +138,8 @@ Regenerate everything with the three `nbconvert --execute` commands in the READM
 | `test_data_contract.py` | Loader inheritance, real-header schema validation, StaticController behavior, metric sanity, seed. |
 | `test_hfbtp_preprocessing.py` | Missing file/dir errors, missing-column and non-numeric errors with informative messages, out-of-range reporting (no drops), raw-file immutability after load, engineered-feature purity, leakage guard on the feature whitelist, split integrity (band completeness, disjoint keys, protocol counts, full coverage). |
 | `test_metrics.py` | Hand-computed MAE/RMSE/R²/MAPE, zero-actual guarding, prefixing. |
+| `test_model_labels.py` | Naming contract: stable model identifiers, display labels for the 3-feature (frozen) and 8-feature (repository) Multiple Linear Regression, estimator unchanged. |
+| `test_notebooks.py` | Every notebook is valid nbformat and every code cell parses. |
 
 Run: `python -m pytest tests -q` from the repository root (config in `pyproject.toml`).
 
@@ -146,7 +150,7 @@ Run: `python -m pytest tests -q` from the repository root (config in `pyproject.
 `HFBTP.csv` (checksum-pinned) → `HFBTPDatasetLoader` (schema, checksums, grid audit; never mutates) →
 `01_dataset_audit.ipynb` (bonded audit report) → `02_eda.ipynb` (descriptive-only EDA figures) →
 `03_hfbtp_baseline_model.ipynb`: `add_engineered_features` → four `splitters.py` protocol splits (asserted against
-protocol reference counts) → `run_all_baselines` (Dummy / Linear-in-Pipeline / RF, train-only fitting) →
+protocol reference counts) → `run_all_baselines` (Dummy / Multiple-Linear-Regression-in-Pipeline / RF, train-only fitting) →
 metrics CSV + run manifest (seed, versions, split definitions) + figures → interpretation limited to
 "for the measured environment" claims. Tests validate contracts, integrity, and metrics independently of the notebooks.
 

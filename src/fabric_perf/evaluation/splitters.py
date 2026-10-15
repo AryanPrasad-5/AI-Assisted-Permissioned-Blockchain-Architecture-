@@ -7,18 +7,19 @@ protocol constants, not tuning knobs:
   T1  — interior block-size transfer:   test band [210..305], val [610..705]
   T1b — right-edge block-size transfer: test band [710..800], val [610..705]
         (maximum trained block size therefore = 605)
-  T2/D0 — unseen-workload headline draw: test {30,140}, val {150,160},
+  T2/D0 — primary draw of the headline unseen-workload experiment (the protocol's
+        headline is the range across draws D0-D3; only D0 is implemented here):
+        test {30,140}, val {150,160},
         training excludes the test/val levels, {150,155}, and all levels >=165
   T3  — orderer transfer: train orderers {3,7} (minus val levels {150,200}),
         val {150,200} @ orderers {3,7}, test orderers {5,9}
 
-An rejected-everywhere-by-design rule: a unit does NOT span train/val/test.
-Helper checks verify completeness (every band row is in the test set),
-disjointness, and exact coverage of the input frame.
+Design rule: no unit (block-size band, workload level or orderer value) spans
+train, validation and test. Helper checks verify completeness (every band row
+is in the test set), disjointness, and exact coverage of the input frame.
 
-References for these constants live in docs/evaluation_protocol.md; they were
-approved in the research-planning workspace (D:\\Plan_research) and are NOT
-re-invented here.
+The constants are documented in docs/evaluation_protocol.md and were approved in
+the research-planning workspace (D:\\Plan_research); they are not re-derived here.
 """
 
 from typing import Dict, List, Optional, Tuple

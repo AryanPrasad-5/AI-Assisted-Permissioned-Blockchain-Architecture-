@@ -2,13 +2,28 @@
 
 Covers exactly the transparent-baseline ladder authorized for this phase:
     DummyRegressor (median strategy)   — reference floor
-    LinearRegression                   — interpretable linear reference
+    Multiple Linear Regression         — interpretable linear reference (sklearn
+                                         LinearRegression on the 8 engineered features)
     RandomForestRegressor              — non-linear ensemble (plan §6 #5)
 
-Deliberately NOT implemented in this stage: gradient boosting, quantile
-models, controller wrapping, hyperparameter tuning — all later-work items
-under the pre-registered protocol; adding them without a protocol version
-bump would violate the evaluation contract.
+Scope. Only the three families above are implemented in this repository. The
+frozen Phase 1C experiment (research-planning workspace, outside this
+repository) pre-registered seven families, including scikit-learn
+HistGradientBoostingRegressor, and ran and reported all of them. Integrating
+HistGradientBoosting here is a separate decision; its absence from this
+smaller ladder is a scope choice, not evidence that the model is unsuitable.
+Extending this repository's family list requires a documented change to
+docs/evaluation_protocol.md. In the frozen protocol, candidates beyond its
+seven pre-registered families (for example quantile models) must be added
+through a version bump with a documented reason. Also not implemented here:
+quantile models, controller wrapping and hyperparameter search.
+
+Model naming. The "linear" identifier is Multiple Linear Regression (8
+Engineered Features): ordinary least squares on the three raw predictors plus
+log10(Set), log10(Block), Block/Set, Set*Orderers and Block/Orderers, behind a
+StandardScaler. It is not polynomial regression (no powers, no
+PolynomialFeatures) and it is not the frozen Phase 1C baseline, which uses the
+three raw predictors only (see MODEL_LABELS and FROZEN_PHASE1C_MLR_LABEL).
 
 Leakage discipline (approved protocol §5, contract item 2):
   Pre-execution features  = {Set Transaction Arrival Rate, Block Size, Orderers}
@@ -41,7 +56,6 @@ RAW_FEATURES: List[str] = [
 
 TARGETS: List[str] = ["Throughput", "Avg Latency"]
 
-# Target semantics for reporting.
 TARGET_UNITS: Dict[str, str] = {
     "Throughput": "tx/s",
     "Avg Latency": "s",
@@ -50,12 +64,24 @@ TARGET_UNITS: Dict[str, str] = {
 BASELINE_MODELS = ("dummy_median", "linear", "random_forest")
 RANDOM_SEED = 42
 
+# Identifiers are stable keys in result files; labels are for tables, plots and prose.
+MODEL_LABELS: Dict[str, str] = {
+    "dummy_median": "Dummy Regressor (median)",
+    "linear": "Multiple Linear Regression (8 Engineered Features)",
+    "random_forest": "Random Forest Regressor",
+}
+MODEL_SHORT_LABELS: Dict[str, str] = {
+    "dummy_median": "Dummy (median)",
+    "linear": "MLR — 8 features",
+    "random_forest": "Random Forest",
+}
+FROZEN_PHASE1C_MLR_LABEL = "Multiple Linear Regression (3 Raw Features, Frozen Phase 1C)"
+
 FEATURE_ENGINEERING_NOTE = (
-    "Derived features use only pre-execution columns: log10 of the offered "
-    "rate and block size (both responses are strongly log-curved per the "
-    "modeling plan), the block-size-per-unit-load ratio, and the load-orderer "
-    "and block-orderer interaction/ratio terms measured as informative in the "
-    "plan's §5 feature table. All are functions of decision-time quantities."
+    "Derived features are deterministic functions of the three pre-execution "
+    "columns: log10 of the offered rate and of the block size, the block-size-"
+    "per-unit-load ratio, the Set*Orderers product and the Block/Orderers ratio. "
+    "No target or post-execution column is used."
 )
 
 
@@ -119,9 +145,9 @@ def separate_features_targets(
 def build_pipeline(model_name: str) -> Pipeline:
     """Build a training pipeline for one approved baseline family.
 
-    Scaling lives where it belongs (linear model input); Random Forest and
-    Dummy models receive raw features (scaling is irrelevant for trees, and
-    fitting a scaler on pooled data would be meaningless to them).
+    Only the linear model is scaled; tree and dummy models receive the
+    unscaled feature columns. Fitted preprocessing lives inside the
+    pipeline, so it is fitted on the training partition only.
     """
     if model_name == "dummy_median":
         model = DummyRegressor(strategy="median")
@@ -147,7 +173,7 @@ def build_pipeline(model_name: str) -> Pipeline:
     raise ValueError(
         f"Unapproved model family {model_name!r}. This phase authorizes only "
         f"{BASELINE_MODELS}; extending the family list requires a documented "
-        "protocol version bump."
+        "change to the evaluation protocol (docs/evaluation_protocol.md)."
     )
 
 

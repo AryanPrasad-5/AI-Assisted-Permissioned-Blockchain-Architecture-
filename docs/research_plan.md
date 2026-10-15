@@ -39,8 +39,8 @@ Work is organized strictly on feature branches branched from `main` and merged b
 | **1. Data Audit** | `feature/dataset-audit` | Auditing HFBTP & MMBPD: missing values, schema checks, parameter grid structure, SHA256 checksums. |
 | **2. EDA & Visuals** | `feature/eda` | Target distributions, correlation heatmaps, feature scatter plots, response surface inspection. |
 | **3. Eval Protocol** | `feature/evaluation-protocol` | Group-aware / configuration-aware splitters, target leakage checks, seed definitions. |
-| **4. Baselines** | `feature/baseline-models` | Linear Regression, Ridge, Decision Tree baselines with standard metrics (MAE, RMSE, R²). |
-| **5. Model Training** | `feature/model-training` | Random Forest, Gradient Boosting (XGBoost/LightGBM), hyperparameter tuning, residual analysis. |
+| **4. Baselines** | `feature/baseline-models` | Multiple Linear Regression, Ridge, Decision Tree baselines with standard metrics (MAE, RMSE, R²). |
+| **5. Model Training** | `feature/model-training` | Random Forest, Gradient Boosting (XGBoost/LightGBM; the frozen Phase 1C pre-registered scikit-learn HistGradientBoostingRegressor, which is not integrated into this repository), hyperparameter tuning, residual analysis. |
 | **6. Cross-Dataset** | `feature/cross-dataset-validation` | Testing models trained on HFBTP against MMBPD; distribution shift analysis. |
 | **7. Controllers** | `feature/controllers` | Implementing Static, Reactive (threshold), and Predictive (ML-driven) controller interfaces. |
 | **8. Fabric Testbed** | `feature/fabric-testbed` | Local Docker-based Fabric deployment, Caliper workloads, telemetry collection. |

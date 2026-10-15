@@ -5,8 +5,8 @@ This directory houses the sequential notebooks for the HFBTP stage:
 ```text
 notebooks/
 ├── 01_dataset_audit.ipynb          # Step 1: checksums, schema, quality, grid coverage (writes experiments/results/hfbtp_audit_report.json)
-├── 02_eda.ipynb                    # Step 2: distributions, load-response, correlations, trade-off (figures -> experiments/figures/)
-└── 03_hfbtp_baseline_model.ipynb   # Step 3: registered splits + Dummy/Linear/RF baselines (writes experiments/results/hfbtp_baseline_*.csv,json)
+├── 02_eda.ipynb                    # Step 2: ten-section EDA: structure, quality, distributions, load/block/orderer interactions, correlations, MLR diagnostics (figures -> experiments/figures/)
+└── 03_hfbtp_baseline_model.ipynb   # Step 3: registered splits + Dummy / Multiple Linear Regression (8 features) / RF baselines (writes experiments/results/hfbtp_baseline_*.csv,json)
 ```
 
 Execution order matters: run 01 first, then 02, then 03. Each notebook was executed against the real `data/raw/hfbtp/HFBTP.csv` (committed outputs included).
@@ -17,6 +17,7 @@ Execution order matters: run 01 first, then 02, then 03. Each notebook was execu
 2. **No absolute paths:** all paths are anchored to the repository root discovered from `Path.cwd()`.
 3. **Reuse, don't duplicate:** loaders, splits, and model pipelines come from `src/fabric_perf` — the notebooks only orchestrate and visualize.
 4. **No test-set feedback:** notebook 03 reports all registered splits and never revises models after seeing test numbers.
+5. **EDA discipline:** notebook 02 describes all rows but selects nothing; its only model fits are exploratory, in-sample, and use the training partition of the registered T2-D0 split.
 
 To re-execute all three from the repository root:
 
