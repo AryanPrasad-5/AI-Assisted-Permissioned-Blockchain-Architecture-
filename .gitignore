@@ -76,6 +76,7 @@ data/raw/*
 !data/raw/hfbtp/
 data/raw/hfbtp/*
 !data/raw/hfbtp/.gitkeep
+!data/raw/hfbtp/README.md
 !data/raw/mmbpd/
 data/raw/mmbpd/*
 !data/raw/mmbpd/.gitkeep
@@ -83,9 +84,7 @@ data/raw/mmbpd/*
 data/raw/external/*
 !data/raw/external/.gitkeep
 
-# Interim & Processed Datasets
-data/interim/*
-!data/interim/.gitkeep
+# Processed Datasets
 data/processed/*
 !data/processed/.gitkeep
 

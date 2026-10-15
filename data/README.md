@@ -13,7 +13,6 @@ data/
 │   ├── hfbtp/              # Hyperledger Fabric Benchmark Throughput & Latency Dataset
 │   ├── mmbpd/              # Multimodal/Multi-scenario Blockchain Performance Dataset
 │   └── external/           # Any auxiliary benchmarks or external reference logs
-├── interim/                # Intermediate, cleaned, or partially joined data
 ├── processed/              # Feature-engineered, train/test matrices ready for ML
 └── manifests/              # Formal provenance manifests (YAML/JSON) for data audit
 ```
@@ -23,7 +22,7 @@ data/
 ## 2. Strict Data Integrity Safeguards
 
 1. **Raw Data Immutability**:
-   Files placed in `data/raw/` must NEVER be edited manually or overwritten. Any transformations must be handled via reproducible Python scripts or Data Pipelines outputting to `data/interim/` or `data/processed/`.
+   Files placed in `data/raw/` must NEVER be edited manually or overwritten. Any transformations must be handled via reproducible Python scripts or Data Pipelines outputting to `data/processed/`.
 2. **Never Commit Raw Data to Git**:
    Raw datasets and large processed arrays are tracked locally only (enforced via `.gitignore`).
 3. **No Blind Data Pooling**:

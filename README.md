@@ -56,8 +56,8 @@ The repository is designed to support multiple datasets. Raw datasets should rem
 
 | Dataset | Intended role | Status |
 |---|---|---|
-| **HFBTP** | Initial audit and potential model development | Audit pending |
-| **MMBPD** | Candidate independent evaluation | Compatibility pending |
+| **HFBTP** | Initial audit and baseline model development | Audited & validated; baselines complete (see `docs/hfbtp_audit_report.md`) |
+| **MMBPD** | Candidate independent evaluation | Not acquired; compatibility checklist pending |
 | **Future datasets** | Extend the research | Planned |
 
 Each dataset must be audited before use: actual files, schema, feature and target columns, units, missing values, duplicates, configuration coverage, and observation structure. Timestamps, repeated trials, and temporal traces must not be assumed. MMBPD must not be assumed compatible with HFBTP until its schema, target definitions, units, and experimental conditions are verified. Datasets may need to be acquired separately because of size or licensing restrictions.
@@ -88,13 +88,30 @@ Evaluation will follow these principles:
 
 **Scope of evidence.** Dataset-based prediction and closed-loop controller validation are different. If HFBTP contains only static configuration-level observations, it may support configuration-to-performance prediction but cannot independently demonstrate temporal forecasting, recovery, or successful adaptive control. Those claims would require suitable temporal data or controlled Fabric experiments.
 
+### Current Implementation Status (HFBTP stage — as of 2026-10-15)
+
+| Component | Status |
+|---|---|
+| Dataset audit (HFBTP) | **Complete** — checksums, schema, grid coverage verified; `docs/hfbtp_audit_report.md` |
+| Data loaders & contracts | **Complete** — `src/fabric_perf/data/` with strict validation and passing tests |
+| Exploratory data analysis | **Complete** — `notebooks/02_eda.ipynb`, figures under `experiments/figures/` |
+| Evaluation protocol | **Implemented** — approved leakage-safe splits (T1 / T1b / T2-D0 / T3) in `src/fabric_perf/evaluation/splitters.py` |
+| Baseline models | **Complete** — Dummy / Linear / Random Forest on registered splits, `notebooks/03_hfbtp_baseline_model.ipynb` |
+| MMBPD cross-dataset evaluation | Not started — dataset acquisition & compatibility checklist pending |
+| Advanced models (HGB, quantile) | Not started — requires documented protocol extension |
+| Controllers (static/reactive/predictive) | Interfaces only (`src/fabric_perf/controllers/base.py`) — no closed-loop evaluation |
+| Fabric testbed & live experiments | Not started — future phase |
+
+Findings so far are descriptive: they characterize the measured configuration-performance relationship and model generalization on historical data. They do **not** demonstrate temporal forecasting, recovery behavior, or that predictive control outperforms static or reactive control in an operational Hyperledger Fabric network.
+
 ### Repository Structure
+
+A file-and-directory guide explaining every meaningful file, its role, dependencies, and how modules fit together is at `docs/FILE_AND_DIRECTORY_GUIDE.md`. Research-planning documents and reading materials (including the viva handbook) live outside this repository under `D:\Plan_research\`.
 
 The intended layout is shown below. Directories may be absent or contain only placeholders until the corresponding work is done; presence of a directory does not imply completed functionality.
 
 ```text
-data/              Multiple datasets and processed data
-configs/           Dataset and experiment configurations
+data/              Multiple datasets, manifests, and processed data
 notebooks/         Data analysis and model experiments
 src/fabric_perf/   Reusable Python research code
 tests/             Automated tests
@@ -116,9 +133,18 @@ python -m venv .venv
 
 pip install -r requirements.txt
 python -m pytest
+
+# Run the research workflow (in order):
+jupyter nbconvert --to notebook --execute --inplace notebooks/01_dataset_audit.ipynb
+jupyter nbconvert --to notebook --execute --inplace notebooks/02_eda.ipynb
+jupyter nbconvert --to notebook --execute --inplace notebooks/03_hfbtp_baseline_model.ipynb
 ```
 
-Datasets are not guaranteed to be included and may need to be obtained separately. Place them under `data/` following any dataset-specific documentation.
+- The audit notebook writes `experiments/results/hfbtp_audit_report.json` (checksums, schema, grid coverage).
+- The EDA notebook writes figures to `experiments/figures/hfbtp_*.png` and `experiments/results/hfbtp_eda_summary.json`.
+- The baseline notebook evaluates the Dummy/Linear/Random-Forest ladder on the registered splits and writes `experiments/results/hfbtp_baseline_metrics.csv` and `hfbtp_baseline_run_manifest.json`.
+- The dataset must be placed at `data/raw/hfbtp/HFBTP.csv` (it is not committed to Git). Its required checksums and handling rules are in `data/raw/hfbtp/README.md` and the loader re-verifies them on every audit.
+- Tests run with `python -m pytest` (29 tests covering imports, data contracts, HFBTP loading/validation, metrics, and split integrity).
 
 ### Citation
 

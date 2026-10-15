@@ -4,49 +4,54 @@
 
 In performance benchmarking datasets, simple random train/test splitting (`train_test_split(shuffle=True)`) creates significant **data leakage**. When identical or neighbouring configuration settings appear in both the training and test sets, models memorize specific configuration cells rather than learning the underlying response surface. This inflates evaluation scores and fails under real deployment.
 
----
+Because HFBTP is a static configuration grid with **one observation per cell**, the purpose of every split is to prove **response-surface generalization**, not memorization. The estimand is honest if phrased as: *"the response of one historical run of the measured environment"* — conditional on (Set rate, Block size, Orderers). No claim about run-to-run variability, calibration, causality, or deployment generality can be supported at this stage.
 
 ## 2. Splitting Strategies
 
-### Strategy A: Configuration-Aware / Group-Aware Split (Recommended for HFBTP)
-- **Mechanism**: Group observations by experimental configuration (e.g., combination of `batch_size` and `batch_timeout`) using `GroupKFold` or `GroupShuffleSplit`.
-- **Purpose**: Tests whether the model generalizes to **unseen configurations**.
-- **Rule**: Entire parameter combinations must reside exclusively in either the train set or test set.
+### Strategy A: Configuration-Aware / Group-Aware Split (generic tool)
+
+Group observations by experimental configuration using `GroupShuffleSplit` (`fabric_perf.evaluation.splitters.create_configuration_aware_split`). Useful for sanity checks; **not** the approved protocol.
 
 ### Strategy B: Out-of-Range Workload Split (Stress Generalization)
-- **Mechanism**: Train on low-to-medium workload levels (e.g., transaction rates $r \le 500$ TPS); test on high/congested workload levels ($r > 500$ TPS).
-- **Purpose**: Evaluates extrapolation ability near saturation points.
 
-### Strategy C: Cross-Dataset Independent Evaluation (Generalization to MMBPD)
-- **Mechanism**: Train exclusively on Dataset A (`HFBTP`), evaluate without any fine-tuning on Dataset B (`MMBPD`).
-- **Rule**: Standardize column units and scales before evaluation.
+Train on low/mid workload levels; test targeted levels or bands. Implemented concretely as **T2/D0** below.
 
----
+### Strategy C: Cross-Dataset Independent Evaluation (MMBPD)
 
-## 3. Evaluation Metrics
+Train exclusively on HFBTP, evaluate without fine-tuning on MMBPD. **Not implemented in this phase** — MMBPD acquisition and its go/no-go checklist (feature semantics, units, deployment conditions) remain unresolved.
 
-For both regression targets ($T$: Throughput, $L$: Latency):
+## 3. Approved HFBTP protocol (as implemented in `src/fabric_perf/evaluation/splitters.py`)
 
-| Metric | Formula | Purpose |
-|---|---|---|
-| **MAE** | $\frac{1}{n} \sum |y - \hat{y}|$ | Robust, directly interpretable error in physical units (TPS or ms). |
-| **RMSE** | $\sqrt{\frac{1}{n} \sum (y - \hat{y})^2}$ | Penalizes large prediction errors severely (critical for latency spikes). |
-| **$R^2$** | $1 - \frac{\sum (y - \hat{y})^2}{\sum (y - \bar{y})^2}$ | Proportion of variance explained by the model relative to baseline mean. |
-| **MAPE** | $\frac{100\%}{n} \sum \left|\frac{y - \hat{y}}{y}\right|$ | Percentage error; handles differing target scales across datasets. |
+These constants were approved in the research-planning workspace and are **not tuning knobs**. Reproduced here because they define the implemented evaluation:
 
-### Operational Performance Metrics (for Controllers)
-When evaluating controllers (Static, Reactive, Predictive):
-- **SLA Violation Rate**: Percentage of time latency exceeds maximum acceptable threshold ($L > L_{\max}$).
-- **Average Delivered Throughput**: Total committed transactions divided by experiment duration.
-- **Control Stability Index**: Frequency of configuration switching (measures controller oscillation).
+| Split | Train | Validation | Test | Claim permitted |
+|---|---|---|---|---|
+| **T1 interior band** | block sizes outside both bands (18,486 rows) | block [610..705] (3,120) | block [210..305] (3,081) | interpolation to unseen block sizes inside the trained range |
+| **T1b right-edge band (primary)** | block sizes ≤ 605 (val band excluded) — 18,642 rows | block [610..705] (3,120) | block [710..800] (2,925) | right-edge block-size extrapolation within the measured grid |
+| **T2 / D0 workload draw** | levels ⇒ train excludes {30,140,150,155,160} ∪ [165..200]; max trained level 145 (16,458 rows) | levels {150,160} (1,266) | levels {30,140} (1,266) | unseen-workload prediction (headline) |
+| **T3 orderer transfer** | orderers {3,7} minus val levels (11,766 rows) | {150,200} @ orderers {3,7} (636) | orderers {5,9} (12,285) | unseen-discrete-configuration transfer (exploratory) |
 
----
+Verified at split construction: bands map to test exactly; partitions are row-disjoint; T1/T1b/T2D0/T3 partition counts equal the protocol reference counts (asserted in notebook 03 and in `tests/test_hfbtp_preprocessing.py`).
 
-## 4. Reproducibility Checklist
+Reporting rules:
 
-Every experiment must record:
-- Random Seed (Default: `42`)
-- Exact Git commit hash
-- Python environment lockfile / versions
-- Dataset manifest checksums (SHA256)
-- Preprocessing scaler parameters fit **only** on the training split (preventing test set leakage).
+- MAE is the **primary** metric (in tx/s and seconds); RMSE secondary; R² tertiary — R² on a near-deterministic surface is not evidence of practical benefit.
+- All splits are reported; no split is dropped after seeing its numbers.
+- Models are forbidden from using test-partition feedback for revision; any such relaunch becomes a labeled post-hoc exploration.
+- Model families authorized for the baseline phase: DummyRegressor, LinearRegression, RandomForestRegressor. Extending the family list requires a documented protocol change.
+
+## 4. Leakage rules (binding)
+
+- **Allowed features**: pre-execution columns {Set Transaction Arrival Rate, Block Size, Orderers} + decision-time-safe derivations (log terms, block-per-load ratio, orderer interactions) fitted/derived without target information.
+- **Forbidden features**: `Actual Transaction Arrival Rate` (measured during the run, Corr(Throughput)=0.985), `Min Latency`, `Max Latency`, and certainly the targets themselves (`Throughput`, `Avg Latency`).
+- **Preprocessing**: any fitted preprocessing (e.g. the linear model's scaler) is fitted on the training partition only and applied frozen to validation/test — enforced by placing everything inside sklearn `Pipeline`.
+- **Missing cells**: the 117 absent grid cells are never imputed; split counts derive from present rows.
+- **No row-index, regime, or temporal features**: HFBTP has no timestamps; lag/rolling features are unsupported by construction.
+
+## 5. Operational Performance Metrics (controllers — future phase)
+
+When controllers (Static, Reactive, Predictive) are eventually evaluated: SLA Violation Rate (only if an explicit SLA is defined), Average Delivered Throughput, and a Control Stability Index (configuration-switch frequency). **None of these are computable from HFBTP.**
+
+## 6. Reproducibility Checklist
+
+Every experiment must record: random seed (default `42`), exact dependency versions (Python, sklearn, pandas, numpy, matplotlib), dataset checksums (MD5 + SHA-256 in `data/manifests/hfbtp_manifest.yaml`), split definitions, and model parameters. The baseline run manifest is saved at `experiments/results/hfbtp_baseline_run_manifest.json`; the audit at `experiments/results/hfbtp_audit_report.json`.

@@ -24,17 +24,27 @@ class TestDataContract(unittest.TestCase):
         loader = HFBTPDatasetLoader(dummy_dir)
         self.assertEqual(loader.dataset_id, "hfbtp")
 
+        # Use real HFBTP column headers verified during audit 2026-10-14
         df = pd.DataFrame({
-            "tx_rate": [100, 200, 300],
-            "batch_size": [10, 20, 30],
-            "throughput": [98.5, 195.2, 280.1],
-            "avg_latency": [0.12, 0.18, 0.35],
+            "Set Transaction Arrival Rate": [10.0, 50.0, 100.0],
+            "Actual Transaction Arrival Rate": [10.1, 50.2, 99.8],
+            "Block Size": [10.0, 50.0, 100.0],
+            "Orderers": [3, 5, 7],
+            "Throughput": [9.8, 48.5, 95.1],
+            "Avg Latency": [0.49, 0.76, 0.85],
+            "Min Latency": [0.02, 0.05, 0.08],
+            "Max Latency": [0.95, 1.82, 2.13],
         })
         report = loader.validate_schema(df)
         self.assertEqual(report["dataset_id"], "hfbtp")
         self.assertEqual(report["row_count"], 3)
         self.assertFalse(report["has_nulls"])
-        self.assertIn("throughput", report["columns"])
+        self.assertIn("Throughput", report["columns"])
+        self.assertIn("Avg Latency", report["columns"])
+        # All required columns present: schema should be valid
+        self.assertTrue(report["schema_valid"])
+        self.assertEqual(report["missing_required_columns"], [])
+
 
     def test_static_controller(self):
         cfg = {"batch_size": 50, "batch_timeout": 500}

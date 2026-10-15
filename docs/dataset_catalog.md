@@ -41,27 +41,29 @@ When registering a new dataset, copy this section and fill out all entries:
 ### 1. HFBTP — Hyperledger Fabric Benchmark & Tuning Platform Dataset
 
 - **Identifier**: `hfbtp`
-- **Source / Reference**: Literature benchmark dataset for Hyperledger Fabric tuning
-- **License**: Pending verification in `feature/dataset-audit`
-- **Storage Location**: `data/raw/hfbtp/`
+- **Source / Reference**: Contributed by the **LearningChain** paper (IEEE TSC); collected with Hyperledger Fabric 2.3 + Hyperledger Caliper 0.5.0, 3 organizations x 3 peers, orderers {3, 5, 7, 9}. Formal citation entry still pending in the planning workspace's literature audit.
+- **License**: Check repository license prior to distribution.
+- **Storage Location**: `data/raw/hfbtp/HFBTP.csv` (988,672 bytes)
+- **Checksums (recomputed 2026-10-15)**: MD5 `E9275C49A2D7DC1F2A4015B6D8B28482`, SHA-256 `CE295D6451787FEFCFE2101579238CDA4BEDE8539BC302E6A482AA4E5782BD5E` — both match the prior research-campaign record.
+- **Dimensions (verified)**: 24,687 rows x 8 columns; 0 missing values; 0 duplicate rows; 0 duplicate configuration cells. Grid 39 x 159 x 4 = 24,804 cells with **117 absent (99.528% coverage)**.
 - **Data Collection Environment**:
-  - Blockchain Framework: Hyperledger Fabric
+  - Blockchain Framework: Hyperledger Fabric 2.3
   - Consensus: Raft
-  - State Database: LevelDB / CouchDB (to be confirmed from raw schema)
-  - Workload Tool: Benchmark generator
-- **Temporal Nature**: **Static parameter grid** (observations represent individual benchmark executions with no timestamp traces).
-- **Replications**: **0 replicated trials per configuration cell** (initial finding; pending verification during formal audit).
-- **Target Variables**:
-  - `throughput`: Transaction Throughput (Transactions Per Second, TPS)
-  - `avg_latency`: Average Latency (seconds or milliseconds; must verify units during audit)
-- **Key Features / Predictors**:
-  - Transaction send rate (`tx_rate`)
-  - Block batch size (`batch_size` / `MaxMessageCount`)
-  - Block batch timeout (`batch_timeout`)
-  - Endorsement policy / organization count
+  - Workload Tool: Hyperledger Caliper 0.5.0
+- **Temporal Nature**: **Static parameter grid** — one observation per `(Set Transaction Arrival Rate, Block Size, Orderers)` cell; **no timestamps, zero replicates**. Row order is design order, not time.
+- **Target Variables** (exact CSV headers):
+  - `Throughput` (tx/s, range 9.8-197.3)
+  - `Avg Latency` (seconds, confirmed — range 0.08-2.67 s)
+- **Key Features / Predictors** (exact CSV headers; all available at decision time):
+  - `Set Transaction Arrival Rate` — offered workload (tx/s)
+  - `Block Size` — Fabric `MaxMessageCount` configuration
+  - `Orderers` — ordering-node count
+- **Excluded columns**:
+  - `Actual Transaction Arrival Rate` — measured during the run; Corr(Throughput)=0.985; leakage risk → excluded from features.
+  - `Min Latency`, `Max Latency` — post-execution measurements → excluded from features and targets.
 - **Target Comparability Notes**:
   - Fixed hardware benchmark. Cannot be directly pooled with other datasets without standardizing units and target scales.
-- **Audit Status**: **Pending Audit** (Scheduled as the immediate next step in `feature/dataset-audit`).
+- **Audit Status**: **Audited & Validated 2026-10-15** — see `docs/hfbtp_audit_report.md` and `experiments/results/hfbtp_audit_report.json`.
 
 ---
 

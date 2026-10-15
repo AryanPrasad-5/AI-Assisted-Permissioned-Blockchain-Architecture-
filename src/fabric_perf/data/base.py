@@ -4,9 +4,17 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 
 
+class DatasetLoadError(FileNotFoundError):
+    """Raised when a dataset file cannot be located or read."""
+
+
+class SchemaValidationError(ValueError):
+    """Raised when a dataset violates its declared schema contract."""
+
+
 class BaseDatasetLoader(ABC):
     """Abstract base class establishing the common interface for all research datasets.
-    
+
     Ensures that different datasets (HFBTP, MMBPD, future benchmarks) implement
     consistent loading, metadata inspection, schema validation, and feature/target contracts.
     """
@@ -25,7 +33,9 @@ class BaseDatasetLoader(ABC):
     @abstractmethod
     def load_raw(self) -> pd.DataFrame:
         """Load raw dataset files from disk without applying preprocessing transformations.
-        
+
+        Never mutates the source file; never drops rows or columns.
+
         Returns:
             pd.DataFrame: Unmodified raw data.
         """
@@ -34,10 +44,10 @@ class BaseDatasetLoader(ABC):
     @abstractmethod
     def validate_schema(self, df: pd.DataFrame) -> Dict[str, Any]:
         """Audit and validate the schema, checking required columns, data types, and nulls.
-        
+
         Args:
             df (pd.DataFrame): Dataframe to audit.
-            
+
         Returns:
             Dict[str, Any]: Audit report containing validation status and warnings.
         """
