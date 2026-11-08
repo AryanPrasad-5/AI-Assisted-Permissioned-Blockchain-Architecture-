@@ -1,0 +1,195 @@
+{
+  "checksums": {
+    "bytes": 988672,
+    "md5": "e9275c49a2d7dc1f2a4015b6d8b28482",
+    "sha256": "ce295d6451787fefcfe2101579238cda4bede8539bc302e6a482aa4e5782bd5e"
+  },
+  "header_exact": [
+    "Set Transaction Arrival Rate",
+    "Actual Transaction Arrival Rate",
+    "Block Size",
+    "Orderers",
+    "Throughput",
+    "Avg Latency",
+    "Min Latency",
+    "Max Latency"
+  ],
+  "header_has_padding": false,
+  "header_matches_expected": true,
+  "shape": [
+    24687,
+    8
+  ],
+  "dtypes": {
+    "Set Transaction Arrival Rate": "float64",
+    "Actual Transaction Arrival Rate": "float64",
+    "Block Size": "float64",
+    "Orderers": "int64",
+    "Throughput": "float64",
+    "Avg Latency": "float64",
+    "Min Latency": "float64",
+    "Max Latency": "float64"
+  },
+  "nulls": 0,
+  "empty_strings": 0,
+  "duplicate_rows": 0,
+  "duplicate_keys": 0,
+  "grid": {
+    "levels": 39,
+    "level_range": [
+      10.0,
+      200.0
+    ],
+    "level_steps": [
+      5.0
+    ],
+    "blocks": 159,
+    "block_range": [
+      10,
+      800
+    ],
+    "block_steps": [
+      5
+    ],
+    "orderers": [
+      3,
+      5,
+      7,
+      9
+    ],
+    "full_grid": 24804
+  },
+  "missing_cells": {
+    "count": 117,
+    "per_level_count_values": {
+      "3": 39
+    },
+    "slots_block_orderers": [
+      [
+        245,
+        9
+      ],
+      [
+        525,
+        9
+      ],
+      [
+        725,
+        5
+      ]
+    ]
+  },
+  "decimals": {
+    "Set Transaction Arrival Rate": {
+      "1": 24687
+    },
+    "Actual Transaction Arrival Rate": {
+      "1": 24687
+    },
+    "Block Size": {
+      "1": 24687
+    },
+    "Orderers": {
+      "0": 24687
+    },
+    "Throughput": {
+      "1": 24687
+    },
+    "Avg Latency": {
+      "1": 2616,
+      "2": 22071
+    },
+    "Min Latency": {
+      "1": 2530,
+      "2": 22157
+    },
+    "Max Latency": {
+      "1": 2636,
+      "2": 22051
+    }
+  },
+  "ranges": {
+    "Set Transaction Arrival Rate": [
+      10.0,
+      200.0
+    ],
+    "Actual Transaction Arrival Rate": [
+      10.0,
+      200.9
+    ],
+    "Block Size": [
+      10.0,
+      800.0
+    ],
+    "Orderers": [
+      3.0,
+      9.0
+    ],
+    "Throughput": [
+      9.8,
+      197.3
+    ],
+    "Avg Latency": [
+      0.08,
+      2.67
+    ],
+    "Min Latency": [
+      0.01,
+      0.58
+    ],
+    "Max Latency": [
+      0.15,
+      5.14
+    ]
+  },
+  "pacing": {
+    "median_A_over_S": 1.001429,
+    "min": 0.752,
+    "max": 1.004737,
+    "rows_below_0_98": 25,
+    "rows_above_1_02": 0,
+    "levels_of_rows_below_0_98": [
+      150.0,
+      160.0,
+      165.0,
+      170.0,
+      175.0,
+      185.0,
+      190.0,
+      195.0,
+      200.0
+    ]
+  },
+  "rows_T_above_A_plus_0_05": 0,
+  "share_max_latency_2_0_to_2_3": 0.501519,
+  "rows_max_latency_above_3": 44,
+  "rows_avg_latency_above_2": 7,
+  "comparison_with_previous": {
+    "previous": {
+      "shape": [
+        24687,
+        8
+      ],
+      "missing_count": 117,
+      "nulls": 0,
+      "duplicate_rows": 0,
+      "rows_T_above_A_plus_0_05": 0,
+      "rows_below_0_98": 25,
+      "median_A_over_S": 1.0014,
+      "share_max_latency_2_0_to_2_3": 0.5015,
+      "header_has_padding_per_context_file": true,
+      "header_has_padding_per_2026_11_09_audit": false
+    },
+    "matches": {
+      "shape": true,
+      "missing_count": true,
+      "nulls": true,
+      "duplicate_rows": true,
+      "T_above_A": true,
+      "rows_below_0_98": true,
+      "median_A_over_S_4dp": true,
+      "max_shelf_4dp": true,
+      "header_padding_audit_2026_11_09": true
+    }
+  }
+}
