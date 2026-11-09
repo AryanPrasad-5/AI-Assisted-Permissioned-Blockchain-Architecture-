@@ -1,0 +1,34 @@
+{
+  "started": "2026-11-09T17:38:43+05:30",
+  "finished": "2026-11-09T17:39:01+05:30",
+  "command": [
+    "C:\\OJT_SEM3\\AI-Assisted-Permissioned-Blockchain-Architecture-\\.venv\\Scripts\\python.exe",
+    "scripts/forensics/hfbtp_allrow_forensics.py",
+    "--out",
+    "docs/research/forensics/results_2026-11-09/run_04_repro"
+  ],
+  "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "numpy": "2.5.4",
+  "pandas": "3.0.6",
+  "git_head_base": "f777482a6c8ddba8ceccca786cdf88b24c3dc7f0",
+  "note_git_head": "Records the base commit only; this script and its outputs are uncommitted.",
+  "script_sha256": "9e0bd2eaef47871d207b7f00b8be5121b3346ba0e8d77a2bbf6ba2bb99f5a92b",
+  "preregistrations_verified": {
+    "hfbtp_forensic_prereg_v0.1_2026-11-09.md": true,
+    "hfbtp_forensic_prereg_v0.2_amendment_2026-11-09.md": true
+  },
+  "input": {
+    "path": "data/raw/hfbtp/HFBTP.csv",
+    "bytes": 988672,
+    "md5": "e9275c49a2d7dc1f2a4015b6d8b28482",
+    "sha256": "ce295d6451787fefcfe2101579238cda4bede8539bc302e6a482aa4e5782bd5e"
+  },
+  "computation_class": "closed-form arithmetic on observed HFBTP columns; no simulator, Monte Carlo, bootstrap, model or MMBPD",
+  "candidate_n_note": "n=1000 is a candidate reconstruction, not a documented HFBTP setting",
+  "algebra_self_check_on_constructed_values": {
+    "count_B45_rhat": 10.0,
+    "count_B40_rhat": 40.0,
+    "cycle_S50_rhat": 91.0
+  }
+}

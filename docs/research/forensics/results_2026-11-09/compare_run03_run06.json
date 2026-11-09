@@ -1,0 +1,34 @@
+{
+  "original": "docs\\research\\forensics\\results_2026-11-09\\run_03_review_checks",
+  "reproduction": "docs\\research\\forensics\\results_2026-11-09\\run_06_repro_review_checks",
+  "ignored_top_level_json_keys": [
+    "started",
+    "finished",
+    "command"
+  ],
+  "missing_in_reproduction": [],
+  "extra_in_reproduction": [],
+  "files": [
+    {
+      "file": "review_checks.json",
+      "sha256_original": "82b8f4693e1524896632010ae46cf0b7df32292b3d8576dba8f78bbcbe8b4931",
+      "sha256_reproduction": "ca64a034cdd0e62a23a30033ebc9c6490a7a7e1dad1cb7ad5cb71b6db880f4b5",
+      "mode": "json",
+      "identical": true,
+      "differences": [],
+      "n_differences": 0,
+      "max_abs_numeric_difference": null,
+      "ignored": {
+        "started": {
+          "original": "2026-11-09T02:59:26+05:30",
+          "reproduction": "2026-11-09T17:39:04+05:30"
+        },
+        "finished": {
+          "original": "2026-11-09T02:59:27+05:30",
+          "reproduction": "2026-11-09T17:39:05+05:30"
+        }
+      }
+    }
+  ],
+  "identical": true
+}

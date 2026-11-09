@@ -1,0 +1,134 @@
+{
+  "original": "docs\\research\\forensics\\results_2026-11-09\\run_01",
+  "reproduction": "docs\\research\\forensics\\results_2026-11-09\\run_04_repro",
+  "ignored_top_level_json_keys": [
+    "started",
+    "finished",
+    "command"
+  ],
+  "missing_in_reproduction": [],
+  "extra_in_reproduction": [],
+  "files": [
+    {
+      "file": "aset_modal.csv",
+      "sha256_original": "dbc26cf28e85c8f1592ff0bb08c59b51d7a21a3cc56765d4233f32e101c005bc",
+      "sha256_reproduction": "dbc26cf28e85c8f1592ff0bb08c59b51d7a21a3cc56765d4233f32e101c005bc",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    },
+    {
+      "file": "b40_b45_gap.csv",
+      "sha256_original": "b7eb7d5170882a5fb4c7bfaba1f8d2580d2d40fd07dd6b23c7215f228e85729d",
+      "sha256_reproduction": "b7eb7d5170882a5fb4c7bfaba1f8d2580d2d40fd07dd6b23c7215f228e85729d",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    },
+    {
+      "file": "integrity.json",
+      "sha256_original": "5005cdf91cd6e7d3af8b136fe377a10b49dad4acb7061fe58ec1f329a5699970",
+      "sha256_reproduction": "5005cdf91cd6e7d3af8b136fe377a10b49dad4acb7061fe58ec1f329a5699970",
+      "mode": "json",
+      "identical": true,
+      "differences": [],
+      "n_differences": 0,
+      "max_abs_numeric_difference": null,
+      "ignored": {}
+    },
+    {
+      "file": "level_parameters.csv",
+      "sha256_original": "93901e90394f4a9e74866602fc5edad13935b782e7262081cfdb039ebf32d8e4",
+      "sha256_reproduction": "93901e90394f4a9e74866602fc5edad13935b782e7262081cfdb039ebf32d8e4",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    },
+    {
+      "file": "manifest.json",
+      "sha256_original": "5935fc2899a4b5929f1e61c7992155acbf2e60bdec81ecaae95b970ea2dabde6",
+      "sha256_reproduction": "4778956e90c64d17c7d3378003aaf272d035a8c1e076b57dd7d6df2bf77addca",
+      "mode": "json",
+      "identical": true,
+      "differences": [],
+      "n_differences": 0,
+      "max_abs_numeric_difference": null,
+      "ignored": {
+        "started": {
+          "original": "2026-11-09T02:38:35+05:30",
+          "reproduction": "2026-11-09T17:38:43+05:30"
+        },
+        "finished": {
+          "original": "2026-11-09T02:38:49+05:30",
+          "reproduction": "2026-11-09T17:39:01+05:30"
+        },
+        "command": {
+          "original": [
+            "C:\\OJT_SEM3\\AI-Assisted-Permissioned-Blockchain-Architecture-\\.venv\\Scripts\\python.exe",
+            "scripts/forensics/hfbtp_allrow_forensics.py",
+            "--out",
+            "docs/research/forensics/results_2026-11-09/run_01"
+          ],
+          "reproduction": [
+            "C:\\OJT_SEM3\\AI-Assisted-Permissioned-Blockchain-Architecture-\\.venv\\Scripts\\python.exe",
+            "scripts/forensics/hfbtp_allrow_forensics.py",
+            "--out",
+            "docs/research/forensics/results_2026-11-09/run_04_repro"
+          ]
+        }
+      }
+    },
+    {
+      "file": "n_profile.csv",
+      "sha256_original": "c3df7dff950ee1df97ae2ce17d8fb370ded0292f6cae63d1362a0ffa23837a19",
+      "sha256_reproduction": "c3df7dff950ee1df97ae2ce17d8fb370ded0292f6cae63d1362a0ffa23837a19",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    },
+    {
+      "file": "p5_by_level.csv",
+      "sha256_original": "a939f60cdfdd1b772acbaceebb6f4c27e4529366c08a1eabd10b3e7785bee4fc",
+      "sha256_reproduction": "a939f60cdfdd1b772acbaceebb6f4c27e4529366c08a1eabd10b3e7785bee4fc",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    },
+    {
+      "file": "p6_switch_pooled.csv",
+      "sha256_original": "12ad0a92c1bb0e2dfdc0c910c8b75b1555a09a147ea6c201028bb656bede506f",
+      "sha256_reproduction": "12ad0a92c1bb0e2dfdc0c910c8b75b1555a09a147ea6c201028bb656bede506f",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    },
+    {
+      "file": "p7_large_block_latency_by_level.csv",
+      "sha256_original": "34096cbece211d8a5a8cd55de22b890e7e49239b12dffaa4fb434efc52d0077a",
+      "sha256_reproduction": "34096cbece211d8a5a8cd55de22b890e7e49239b12dffaa4fb434efc52d0077a",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    },
+    {
+      "file": "results.json",
+      "sha256_original": "7a919a7113c972c1d21a6e13b5b5a9986a0bbd357432ecf7ff179a3aab349781",
+      "sha256_reproduction": "7a919a7113c972c1d21a6e13b5b5a9986a0bbd357432ecf7ff179a3aab349781",
+      "mode": "json",
+      "identical": true,
+      "differences": [],
+      "n_differences": 0,
+      "max_abs_numeric_difference": null,
+      "ignored": {}
+    },
+    {
+      "file": "rows_derived_keys_only.csv",
+      "sha256_original": "6ef1b8c2e8b351a9633fcf1d850e3de09e24e6f6ec5b8d3509161a5a73f6c8c5",
+      "sha256_reproduction": "6ef1b8c2e8b351a9633fcf1d850e3de09e24e6f6ec5b8d3509161a5a73f6c8c5",
+      "mode": "bytes",
+      "identical": true,
+      "first_differing_line": null
+    }
+  ],
+  "identical": true
+}

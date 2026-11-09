@@ -1,0 +1,882 @@
+{
+  "label": "EXPLORATORY - requested by independent review; not pre-registered",
+  "c_hat": 2.048877,
+  "R1_p4_with_c_hat": {
+    "c": 2.048877,
+    "rows": 4584,
+    "share": 0.33137,
+    "by_level": [
+      {
+        "S": 20.0,
+        "q_pred": 16.0,
+        "median_rhat": 8.323,
+        "share": 0.215
+      },
+      {
+        "S": 25.0,
+        "q_pred": 12.0,
+        "median_rhat": 15.069,
+        "share": 0.922
+      },
+      {
+        "S": 30.0,
+        "q_pred": 8.0,
+        "median_rhat": 60.829,
+        "share": 0.32
+      },
+      {
+        "S": 35.0,
+        "q_pred": 64.0,
+        "median_rhat": 53.654,
+        "share": 0.199
+      },
+      {
+        "S": 40.0,
+        "q_pred": 16.0,
+        "median_rhat": 79.463,
+        "share": 0.186
+      },
+      {
+        "S": 45.0,
+        "q_pred": 70.0,
+        "median_rhat": 61.423,
+        "share": 0.287
+      },
+      {
+        "S": 50.0,
+        "q_pred": 73.0,
+        "median_rhat": 62.713,
+        "share": 0.255
+      },
+      {
+        "S": 55.0,
+        "q_pred": 96.0,
+        "median_rhat": 84.734,
+        "share": 0.244
+      }
+    ],
+    "by_orderers": {
+      "3": 0.51,
+      "5": 0.355,
+      "7": 0.253,
+      "9": 0.206
+    }
+  },
+  "R1b_p4_with_c_2_06": {
+    "c": 2.06,
+    "rows": 4584,
+    "share": 0.423429,
+    "by_level": [
+      {
+        "S": 20.0,
+        "q_pred": 34.0,
+        "median_rhat": 8.323,
+        "share": 0.017
+      },
+      {
+        "S": 25.0,
+        "q_pred": 12.0,
+        "median_rhat": 15.069,
+        "share": 0.922
+      },
+      {
+        "S": 30.0,
+        "q_pred": 8.0,
+        "median_rhat": 60.829,
+        "share": 0.32
+      },
+      {
+        "S": 35.0,
+        "q_pred": 51.0,
+        "median_rhat": 53.654,
+        "share": 0.761
+      },
+      {
+        "S": 40.0,
+        "q_pred": 4.0,
+        "median_rhat": 79.463,
+        "share": 0.169
+      },
+      {
+        "S": 45.0,
+        "q_pred": 70.0,
+        "median_rhat": 61.423,
+        "share": 0.287
+      },
+      {
+        "S": 50.0,
+        "q_pred": 64.0,
+        "median_rhat": 62.713,
+        "share": 0.503
+      },
+      {
+        "S": 55.0,
+        "q_pred": 88.0,
+        "median_rhat": 84.734,
+        "share": 0.409
+      }
+    ],
+    "by_orderers": {
+      "3": 0.477,
+      "5": 0.462,
+      "7": 0.394,
+      "9": 0.36
+    }
+  },
+  "R2_h4_upward_scan": {
+    "pooled": {
+      "decidable_rows": 1279,
+      "blocks_with_3plus": 37,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.828571,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 79,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 79,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 64,
+          "count_share": 0.094,
+          "cycle_share": 0.906
+        },
+        {
+          "B": 135,
+          "decidable": 54,
+          "count_share": 0.148,
+          "cycle_share": 0.852
+        },
+        {
+          "B": 140,
+          "decidable": 51,
+          "count_share": 0.078,
+          "cycle_share": 0.922
+        },
+        {
+          "B": 145,
+          "decidable": 50,
+          "count_share": 0.1,
+          "cycle_share": 0.9
+        },
+        {
+          "B": 150,
+          "decidable": 56,
+          "count_share": 0.107,
+          "cycle_share": 0.893
+        },
+        {
+          "B": 155,
+          "decidable": 51,
+          "count_share": 0.02,
+          "cycle_share": 0.98
+        },
+        {
+          "B": 160,
+          "decidable": 44,
+          "count_share": 0.114,
+          "cycle_share": 0.886
+        }
+      ]
+    },
+    "orderers_3": {
+      "decidable_rows": 361,
+      "blocks_with_3plus": 32,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.9,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 21,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 20,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 18,
+          "count_share": 0.056,
+          "cycle_share": 0.944
+        },
+        {
+          "B": 135,
+          "decidable": 16,
+          "count_share": 0.125,
+          "cycle_share": 0.875
+        },
+        {
+          "B": 140,
+          "decidable": 15,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 145,
+          "decidable": 17,
+          "count_share": 0.059,
+          "cycle_share": 0.941
+        },
+        {
+          "B": 150,
+          "decidable": 16,
+          "count_share": 0.125,
+          "cycle_share": 0.875
+        },
+        {
+          "B": 155,
+          "decidable": 14,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 160,
+          "decidable": 11,
+          "count_share": 0.091,
+          "cycle_share": 0.909
+        }
+      ]
+    },
+    "orderers_5": {
+      "decidable_rows": 314,
+      "blocks_with_3plus": 31,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.896552,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 18,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 19,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 16,
+          "count_share": 0.062,
+          "cycle_share": 0.938
+        },
+        {
+          "B": 135,
+          "decidable": 14,
+          "count_share": 0.071,
+          "cycle_share": 0.929
+        },
+        {
+          "B": 140,
+          "decidable": 12,
+          "count_share": 0.083,
+          "cycle_share": 0.917
+        },
+        {
+          "B": 145,
+          "decidable": 10,
+          "count_share": 0.1,
+          "cycle_share": 0.9
+        },
+        {
+          "B": 150,
+          "decidable": 12,
+          "count_share": 0.083,
+          "cycle_share": 0.917
+        },
+        {
+          "B": 155,
+          "decidable": 15,
+          "count_share": 0.067,
+          "cycle_share": 0.933
+        },
+        {
+          "B": 160,
+          "decidable": 11,
+          "count_share": 0.091,
+          "cycle_share": 0.909
+        }
+      ]
+    },
+    "orderers_7": {
+      "decidable_rows": 321,
+      "blocks_with_3plus": 30,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.964286,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 20,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 20,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 17,
+          "count_share": 0.118,
+          "cycle_share": 0.882
+        },
+        {
+          "B": 135,
+          "decidable": 13,
+          "count_share": 0.154,
+          "cycle_share": 0.846
+        },
+        {
+          "B": 140,
+          "decidable": 14,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 145,
+          "decidable": 11,
+          "count_share": 0.091,
+          "cycle_share": 0.909
+        },
+        {
+          "B": 150,
+          "decidable": 14,
+          "count_share": 0.071,
+          "cycle_share": 0.929
+        },
+        {
+          "B": 155,
+          "decidable": 13,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 160,
+          "decidable": 11,
+          "count_share": 0.091,
+          "cycle_share": 0.909
+        }
+      ]
+    },
+    "orderers_9": {
+      "decidable_rows": 283,
+      "blocks_with_3plus": 30,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.821429,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 20,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 20,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 13,
+          "count_share": 0.154,
+          "cycle_share": 0.846
+        },
+        {
+          "B": 135,
+          "decidable": 11,
+          "count_share": 0.273,
+          "cycle_share": 0.727
+        },
+        {
+          "B": 140,
+          "decidable": 10,
+          "count_share": 0.3,
+          "cycle_share": 0.7
+        },
+        {
+          "B": 145,
+          "decidable": 12,
+          "count_share": 0.167,
+          "cycle_share": 0.833
+        },
+        {
+          "B": 150,
+          "decidable": 14,
+          "count_share": 0.143,
+          "cycle_share": 0.857
+        },
+        {
+          "B": 155,
+          "decidable": 9,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 160,
+          "decidable": 11,
+          "count_share": 0.182,
+          "cycle_share": 0.818
+        }
+      ]
+    },
+    "band_100-145": {
+      "decidable_rows": 296,
+      "blocks_with_3plus": 19,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.823529,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 34,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 32,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 27,
+          "count_share": 0.148,
+          "cycle_share": 0.852
+        },
+        {
+          "B": 135,
+          "decidable": 18,
+          "count_share": 0.222,
+          "cycle_share": 0.778
+        },
+        {
+          "B": 140,
+          "decidable": 15,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 145,
+          "decidable": 17,
+          "count_share": 0.294,
+          "cycle_share": 0.706
+        },
+        {
+          "B": 150,
+          "decidable": 22,
+          "count_share": 0.273,
+          "cycle_share": 0.727
+        },
+        {
+          "B": 155,
+          "decidable": 18,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 160,
+          "decidable": 15,
+          "count_share": 0.133,
+          "cycle_share": 0.867
+        }
+      ]
+    },
+    "band_150-200": {
+      "decidable_rows": 955,
+      "blocks_with_3plus": 37,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.828571,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 36,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 36,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 34,
+          "count_share": 0.059,
+          "cycle_share": 0.941
+        },
+        {
+          "B": 135,
+          "decidable": 34,
+          "count_share": 0.059,
+          "cycle_share": 0.941
+        },
+        {
+          "B": 140,
+          "decidable": 33,
+          "count_share": 0.061,
+          "cycle_share": 0.939
+        },
+        {
+          "B": 145,
+          "decidable": 33,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 150,
+          "decidable": 34,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 155,
+          "decidable": 33,
+          "count_share": 0.03,
+          "cycle_share": 0.97
+        },
+        {
+          "B": 160,
+          "decidable": 29,
+          "count_share": 0.103,
+          "cycle_share": 0.897
+        }
+      ]
+    },
+    "band_50-95": {
+      "decidable_rows": 28,
+      "blocks_with_3plus": 4,
+      "last_count_B": 125,
+      "first_cycle_B": 130,
+      "share_of_blocks_at_or_above_first_cycle_with_cycle_ge_0_8": 0.5,
+      "table_120_to_160": [
+        {
+          "B": 120,
+          "decidable": 9,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 125,
+          "decidable": 11,
+          "count_share": 1.0,
+          "cycle_share": 0.0
+        },
+        {
+          "B": 130,
+          "decidable": 3,
+          "count_share": 0.0,
+          "cycle_share": 1.0
+        },
+        {
+          "B": 140,
+          "decidable": 3,
+          "count_share": 0.667,
+          "cycle_share": 0.333
+        }
+      ]
+    }
+  },
+  "R3_p1_fixed_rows_n_995_1005": {
+    "995": {
+      "rows": 1657,
+      "share": 0.016898,
+      "median_signed_error": 6.31727,
+      "share_r_zero_under_n": 0.0
+    },
+    "996": {
+      "rows": 1657,
+      "share": 0.069403,
+      "median_signed_error": 5.063013,
+      "share_r_zero_under_n": 0.0
+    },
+    "997": {
+      "rows": 1657,
+      "share": 0.448401,
+      "median_signed_error": 3.803184,
+      "share_r_zero_under_n": 0.0
+    },
+    "998": {
+      "rows": 1657,
+      "share": 0.844297,
+      "median_signed_error": 2.542771,
+      "share_r_zero_under_n": 0.0
+    },
+    "999": {
+      "rows": 1657,
+      "share": 0.91732,
+      "median_signed_error": 1.293045,
+      "share_r_zero_under_n": 0.0
+    },
+    "1000": {
+      "rows": 1657,
+      "share": 0.937839,
+      "median_signed_error": 0.065196,
+      "share_r_zero_under_n": 0.0
+    },
+    "1001": {
+      "rows": 1657,
+      "share": 0.947495,
+      "median_signed_error": -1.186122,
+      "share_r_zero_under_n": 0.0
+    },
+    "1002": {
+      "rows": 1657,
+      "share": 0.914906,
+      "median_signed_error": -2.442213,
+      "share_r_zero_under_n": 0.0
+    },
+    "1003": {
+      "rows": 1657,
+      "share": 0.498491,
+      "median_signed_error": -3.677471,
+      "share_r_zero_under_n": 0.0
+    },
+    "1004": {
+      "rows": 1657,
+      "share": 0.123718,
+      "median_signed_error": -4.91795,
+      "share_r_zero_under_n": 0.0
+    },
+    "1005": {
+      "rows": 1657,
+      "share": 0.052505,
+      "median_signed_error": -6.082921,
+      "share_r_zero_under_n": 0.074231
+    }
+  },
+  "R4_p1_chance_by_stratum": {
+    "by_orderers": {
+      "3": {
+        "agree": 0.966,
+        "chance": 0.153
+      },
+      "5": {
+        "agree": 0.917,
+        "chance": 0.154
+      },
+      "7": {
+        "agree": 0.925,
+        "chance": 0.149
+      },
+      "9": {
+        "agree": 0.942,
+        "chance": 0.151
+      }
+    },
+    "by_band": {
+      "100-145": {
+        "agree": 0.995,
+        "chance": 0.146
+      },
+      "150-200": {
+        "agree": 0.857,
+        "chance": 0.127
+      },
+      "50-95": {
+        "agree": 1.0,
+        "chance": 0.211
+      }
+    },
+    "by_block": {
+      "15": {
+        "rows": 123,
+        "agree": 0.813,
+        "chance": 0.454
+      },
+      "30": {
+        "rows": 124,
+        "agree": 0.927,
+        "chance": 0.264
+      },
+      "35": {
+        "rows": 124,
+        "agree": 0.935,
+        "chance": 0.217
+      },
+      "45": {
+        "rows": 124,
+        "agree": 1.0,
+        "chance": 0.173
+      },
+      "55": {
+        "rows": 120,
+        "agree": 0.983,
+        "chance": 0.139
+      },
+      "60": {
+        "rows": 116,
+        "agree": 0.948,
+        "chance": 0.127
+      },
+      "65": {
+        "rows": 112,
+        "agree": 0.964,
+        "chance": 0.117
+      },
+      "70": {
+        "rows": 106,
+        "agree": 0.962,
+        "chance": 0.108
+      },
+      "75": {
+        "rows": 104,
+        "agree": 0.99,
+        "chance": 0.1
+      },
+      "80": {
+        "rows": 100,
+        "agree": 0.87,
+        "chance": 0.094
+      },
+      "85": {
+        "rows": 96,
+        "agree": 0.969,
+        "chance": 0.087
+      },
+      "90": {
+        "rows": 92,
+        "agree": 1.0,
+        "chance": 0.083
+      },
+      "95": {
+        "rows": 88,
+        "agree": 0.875,
+        "chance": 0.078
+      },
+      "105": {
+        "rows": 80,
+        "agree": 0.862,
+        "chance": 0.07
+      },
+      "110": {
+        "rows": 76,
+        "agree": 0.974,
+        "chance": 0.067
+      },
+      "115": {
+        "rows": 72,
+        "agree": 0.917,
+        "chance": 0.064
+      }
+    }
+  },
+  "R5_e3_baselines": {
+    "rows": 12231,
+    "global_majority_share": 0.628567,
+    "level_majority_ceiling": 0.95912,
+    "note": "level_majority_ceiling is the best any per-level high/low rule can score; E3 scored 0.92-0.95"
+  },
+  "R6_h5_large_block_latency_S_ge_145": [
+    {
+      "S": 145.0,
+      "T": 122.4,
+      "avg": 0.77,
+      "mn": 0.16,
+      "mx": 1.42
+    },
+    {
+      "S": 150.0,
+      "T": 120.7,
+      "avg": 0.84,
+      "mn": 0.17,
+      "mx": 2.23
+    },
+    {
+      "S": 155.0,
+      "T": 121.3,
+      "avg": 0.77,
+      "mn": 0.16,
+      "mx": 2.16
+    },
+    {
+      "S": 160.0,
+      "T": 122.1,
+      "avg": 0.72,
+      "mn": 0.17,
+      "mx": 2.09
+    },
+    {
+      "S": 165.0,
+      "T": 159.0,
+      "avg": 0.68,
+      "mn": 0.16,
+      "mx": 1.2
+    },
+    {
+      "S": 170.0,
+      "T": 162.0,
+      "avg": 0.68,
+      "mn": 0.23,
+      "mx": 1.16
+    },
+    {
+      "S": 175.0,
+      "T": 162.4,
+      "avg": 0.67,
+      "mn": 0.24,
+      "mx": 1.13
+    },
+    {
+      "S": 180.0,
+      "T": 163.5,
+      "avg": 0.68,
+      "mn": 0.25,
+      "mx": 1.13
+    },
+    {
+      "S": 185.0,
+      "T": 159.4,
+      "avg": 0.75,
+      "mn": 0.29,
+      "mx": 1.52
+    },
+    {
+      "S": 190.0,
+      "T": 159.8,
+      "avg": 0.76,
+      "mn": 0.31,
+      "mx": 1.54
+    },
+    {
+      "S": 195.0,
+      "T": 157.85,
+      "avg": 0.77,
+      "mn": 0.32,
+      "mx": 1.68
+    },
+    {
+      "S": 200.0,
+      "T": 158.7,
+      "avg": 0.78,
+      "mn": 0.32,
+      "mx": 1.73
+    }
+  ],
+  "started": "2026-11-09T17:39:04+05:30",
+  "finished": "2026-11-09T17:39:05+05:30",
+  "script_sha256": "80424835d538b5f4ebcd7d6290cc775d1b37f3b7a710f80a7d04b6369cc6d931",
+  "base_script_sha256": "9e0bd2eaef47871d207b7f00b8be5121b3346ba0e8d77a2bbf6ba2bb99f5a92b"
+}
