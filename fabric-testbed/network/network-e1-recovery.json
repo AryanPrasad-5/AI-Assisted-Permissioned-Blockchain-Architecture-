@@ -1,0 +1,67 @@
+{
+  "configtx_base": "/mnt/c/OJT_SEM3/AI-Assisted-Permissioned-Blockchain-Architecture-/fabric-testbed/network/configtx/configtx-e1.yaml",
+  "configtx_relative_to": "/home/mailf18/fabric/fabric-samples/test-network/configtx",
+  "profile": "E1ChannelRaft3",
+  "fabric_cfg_path": "/home/mailf18/fabric/fabric-samples/config",
+  "bin_dir": "/home/mailf18/fabric/fabric-samples/bin",
+  "orderer_ca": "/home/mailf18/fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem",
+  "orderers": [
+    {
+      "name": "orderer.example.com",
+      "address": "localhost:7050",
+      "tls_hostname": "orderer.example.com",
+      "admin_address": "localhost:7053",
+      "admin_client_cert": "/home/mailf18/fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt",
+      "admin_client_key": "/home/mailf18/fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key",
+      "ops_url": "http://localhost:9443/metrics"
+    },
+    {
+      "name": "orderer2.example.com",
+      "address": "localhost:8050",
+      "tls_hostname": "orderer2.example.com",
+      "admin_address": "localhost:8053",
+      "admin_client_cert": "/home/mailf18/fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt",
+      "admin_client_key": "/home/mailf18/fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.key",
+      "ops_url": "http://localhost:9446/metrics"
+    },
+    {
+      "name": "orderer3.example.com",
+      "address": "localhost:9050",
+      "tls_hostname": "orderer3.example.com",
+      "admin_address": "localhost:9053",
+      "admin_client_cert": "/home/mailf18/fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt",
+      "admin_client_key": "/home/mailf18/fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.key",
+      "ops_url": "http://localhost:9447/metrics"
+    }
+  ],
+  "peers": [
+    {
+      "name": "peer0.org1.example.com",
+      "msp_id": "Org1MSP",
+      "address": "localhost:7051",
+      "tls_root_cert": "/home/mailf18/fabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem",
+      "admin_msp_dir": "/home/mailf18/fabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
+    },
+    {
+      "name": "peer0.org2.example.com",
+      "msp_id": "Org2MSP",
+      "address": "localhost:9051",
+      "tls_root_cert": "/home/mailf18/fabric/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem",
+      "admin_msp_dir": "/home/mailf18/fabric/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
+    }
+  ],
+  "chaincode": {
+    "name": "e1asset",
+    "version": "1.0",
+    "sequence": 1,
+    "package_id": "e1asset_1.0:75f5882980484e8f93e7a916ec18edfbfb91c7d33d76cae9d9240b1013b7918f"
+  },
+  "expect": {
+    "consensus": "etcdraft",
+    "consenters": 3,
+    "anchor_peers_required": true,
+    "raft_leader_wait": true,
+    "leader_attempts": 30,
+    "leader_sleep_s": 1.0
+  }
+}

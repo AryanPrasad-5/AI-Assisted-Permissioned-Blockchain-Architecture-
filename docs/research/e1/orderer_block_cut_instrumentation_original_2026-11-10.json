@@ -1,0 +1,32 @@
+{
+  "captured_at_utc": "2026-11-10T17:41:22Z",
+  "purpose": "Pre-change snapshot for temporary block-cut logging validation",
+  "fabric_version": "v2.5.16",
+  "commit_sha": "f871cf9",
+  "compose_source": "fabric-testbed/network/compose-e1-raft3.yaml",
+  "orderers": [
+    {
+      "container": "orderer.example.com",
+      "operations_endpoint": "http://127.0.0.1:9443",
+      "active_logspec": "info",
+      "compose_logging_environment": "FABRIC_LOGGING_SPEC=INFO"
+    },
+    {
+      "container": "orderer2.example.com",
+      "operations_endpoint": "http://127.0.0.1:9446",
+      "active_logspec": "info",
+      "compose_logging_environment": "FABRIC_LOGGING_SPEC=INFO"
+    },
+    {
+      "container": "orderer3.example.com",
+      "operations_endpoint": "http://127.0.0.1:9447",
+      "active_logspec": "info",
+      "compose_logging_environment": "FABRIC_LOGGING_SPEC=INFO"
+    }
+  ],
+  "targeted_temporary_spec": "info:orderer.common.blockcutter,orderer.consensus.etcdraft=debug",
+  "restore_spec": "info",
+  "channel_configuration_scope": "unchanged",
+  "restart_required": false,
+  "source": "GET /logspec, GET /version, GET /healthz, docker inspect, compose file"
+}
