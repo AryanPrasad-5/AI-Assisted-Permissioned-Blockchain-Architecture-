@@ -1,0 +1,19 @@
+# PROPOSED, NOT RUN. See README.md.
+test:
+  name: e1-duration
+  workers:
+    number: 1
+  rounds:
+    - label: e1-duration-RUN_ID
+      txDuration: 120
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: RATE
+      workload:
+        module: workloads/create-unique-asset.js
+monitors:
+  transaction:
+    - module: ./e1_per_tx_observer.js
+      options:
+        outputPath: results/RUN_ID.csv
