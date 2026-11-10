@@ -1,0 +1,9 @@
+{
+  "test_network": "/home/mailf18/fabric/fabric-samples/test-network",
+  "fabric_bin": "/home/mailf18/fabric/fabric-samples/bin",
+  "fabric_cfg": "/home/mailf18/fabric/fabric-samples/config",
+  "repo": "/mnt/c/OJT_SEM3/AI-Assisted-Permissioned-Blockchain-Architecture-",
+  "caliper_workspace": "/home/mailf18/e1/caliper-ws-benchmark",
+  "chaincode": {"name": "e1asset", "version": "1.0", "sequence": 1},
+  "protocol": {"event_strategy": "msp_any", "invoke_timeout_s": 60, "binding": "fabric:2.5"}
+}
