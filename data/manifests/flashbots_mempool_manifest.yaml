@@ -1,0 +1,67 @@
+dataset_id: flashbots_mempool_dumpster
+source: Flashbots Mempool Dumpster transaction archives
+source_reference: https://github.com/flashbots/mempool-dumpster
+temporal_nature: ordered transaction-arrival event log
+raw_archives:
+  - filename: 2026-09-21.csv.zip
+    source_path: C:/Users/mailf/Downloads/2026-09-21.csv.zip
+    sha256: DFF1A04366B772EC8DE6708450849082F2AFD12DDFC2BA620D4A9CFC827B17A3
+    archive_entry: 2026-09-21.csv
+    compressed_bytes: 100594099
+    uncompressed_bytes: 274959984
+    rows: 1055934
+    utc_start: 2026-09-21T00:00:00.143Z
+    utc_end: 2026-09-21T23:59:59.990Z
+  - filename: 2026-10-12.csv.zip
+    source_path: C:/Users/mailf/Downloads/2026-10-12.csv.zip
+    sha256: 15C8C63E0DBBEBFB54BD9A2F0DBF3529E93BDDAA21C5FF0E09FB054F5DA4CA05
+    archive_entry: 2026-10-12.csv
+    compressed_bytes: 87369211
+    uncompressed_bytes: 237161921
+    rows: 913856
+    utc_start: 2026-10-12T00:00:00.031Z
+    utc_end: 2026-10-12T23:59:59.996Z
+schema:
+  reception_timestamp: timestamp_ms
+  excluded_for_arrival_model:
+    - included_block_timestamp_ms
+    - inclusion_delay_ms
+  columns:
+    - timestamp_ms
+    - hash
+    - chain_id
+    - from
+    - to
+    - value
+    - nonce
+    - gas
+    - gas_price
+    - gas_tip_cap
+    - gas_fee_cap
+    - data_size
+    - data_4bytes
+    - sources
+    - included_at_block_height
+    - included_block_timestamp_ms
+    - inclusion_delay_ms
+    - tx_type
+verification:
+  audit_script: scripts/research_audit/audit_flashbots_archives.py
+  audit_report: experiments/results/flashbots_archive_audit.json
+  archive_contents_verified_without_extraction: true
+  archive_crc_valid: true
+  schemas_identical: true
+  combined_rows: 1969790
+  combined_duplicate_transaction_hashes: 0
+  timestamp_values_invalid: 0
+  timestamp_order_decreases: 0
+  missing_value_findings:
+    timestamp_ms: 0
+    hash: 0
+    to: 1151
+    data_4bytes: 749911
+    sources: 1969790
+    other_numeric_and_identity_fields: 0
+  chronological_decreases: 0
+  combination_rule: concatenate only after preserving timestamp_ms, sort by timestamp_ms, and deduplicate by hash as a safety check
+  suitability: suitable_for_arrival_forecasting_and_synthetic_fabric_workload_timing

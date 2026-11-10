@@ -1,0 +1,11 @@
+{
+  "n": 20,
+  "max_message_count": 45,
+  "preferred_max_bytes": 10485760,
+  "event_strategy": "msp_any",
+  "invoke_timeout_s": 60,
+  "binding": "fabric:2.5",
+  "clock_offset_bound_ms": 1.0,
+  "expect_all_success": true,
+  "expect_block_pattern": false
+}
