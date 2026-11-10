@@ -1,5 +1,5 @@
 'use strict';
-// Workload module tests: synthetic only (a fake WorkloadModuleBase and SUT adapter). Run: node --test tests/e1/js/
+                                                                                                                   
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -10,7 +10,7 @@ const { build } = require(path.join(WL, 'e1_create_asset.js'));
 
 const ARGS = { runId: 'r001', contractId: 'e1asset', invokerIdentity: 'User1', valueBytes: 128, mode: 'create',
     failEvery: 25, rmwKey: 'hot', settleSeconds: 0 };
-const CHAINCODE_KEY = /^[A-Za-z0-9._-]{1,128}$/;   // core/validate.go validateKey
+const CHAINCODE_KEY = /^[A-Za-z0-9._-]{1,128}$/;                                  
 
 class FakeBase {
     async initializeWorkloadModule(workerIndex, totalWorkers, roundIndex, roundArguments, sutAdapter, sutContext) {
@@ -77,10 +77,10 @@ test('module adapter: settles before the round, sends one request per call, numb
     assert.deepEqual(slept, [10000]);
     for (let i = 0; i < 3; i++) { await w.submitTransaction(); }
     assert.deepEqual(sut.sent.map((r) => r.contractArguments[0]), ['r001_1_0000000', 'r001_1_0000001', 'r001_1_0000002']);
-    await w.initializeWorkloadModule(0, 1, 2, ARGS, sut, {});     // a new round restarts the sequence
+    await w.initializeWorkloadModule(0, 1, 2, ARGS, sut, {});                                         
     await w.submitTransaction();
     assert.equal(sut.sent[3].contractArguments[0], 'r001_2_0000000');
-    assert.deepEqual(slept, [10000]);                               // settleSeconds 0: no sleep
+    assert.deepEqual(slept, [10000]);                                                           
 });
 
 test('module adapter refuses more than one worker and bad arguments', async () => {

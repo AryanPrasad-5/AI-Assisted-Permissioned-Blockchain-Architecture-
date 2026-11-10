@@ -1,16 +1,16 @@
 'use strict';
-/*
- * Caliper 0.6.0 workload module for E0/E1 (LA-2). PROPOSED: never loaded by a real Caliper worker (E0-0
- * "stack/load" verifies it). All request logic is in e1_workload_core.js; this file only adapts it to
- * Caliper's WorkloadModuleBase (initializeWorkloadModule / submitTransaction).
- * - Exactly one worker (protocol section 10: deterministic arguments from the sequence number only).
- * - settleSeconds: the protocol section 9 step 4 idle period, slept in initializeWorkloadModule of the
- *   measured round, i.e. before the transaction observer activates.
- * - One sendRequests call with a single request per transaction.
- * The module is copied into the run's workspace by scripts/e1/e1_la2_render.py (SHA-256 recorded), so
- * '@hyperledger/caliper-core' resolves from the workspace (after `caliper bind`) or, failing that, from the
- * Caliper CLI that loaded it (require.main).
- */
+  
+                                                                                                        
+                                                                                                      
+                                                                               
+                                                                                                     
+                                                                                                       
+                                                                    
+                                                                 
+                                                                                                      
+                                                                                                            
+                                             
+   
 const core = require('./e1_workload_core.js');
 
 function loadBase() {

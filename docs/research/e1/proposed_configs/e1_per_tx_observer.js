@@ -1,6 +1,6 @@
 'use strict';
-// PROPOSED, NOT RUN. Confirm the interface against the pinned Caliper before use.
-// Writes one row per finished transaction at the end of the round.
+                                                                                  
+                                                                   
 const fs = require('fs');
 const { TxObserverInterface } = require('@hyperledger/caliper-core/lib/worker/tx-observers/tx-observer-interface');
 

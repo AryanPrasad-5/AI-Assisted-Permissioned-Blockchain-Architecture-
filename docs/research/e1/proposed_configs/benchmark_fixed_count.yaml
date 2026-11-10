@@ -1,4 +1,4 @@
-# PROPOSED, NOT RUN. See README.md.
+
 test:
   name: e1-fixed-count
   workers:

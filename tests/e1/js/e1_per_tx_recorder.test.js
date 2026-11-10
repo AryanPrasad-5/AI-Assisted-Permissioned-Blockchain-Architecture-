@@ -1,6 +1,6 @@
 'use strict';
-// Synthetic lifecycle tests of the E1 per-transaction recorder (spec file 03 section 9).
-// Run: node --test tests/e1/js/    (no Caliper, Docker or Fabric involved)
+                                                                                         
+                                                                           
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -17,7 +17,7 @@ function tmpDir() {
     return dir;
 }
 
-// Remove only the temporary directories this test file created (like pytest's tmp_path).
+                                                                                         
 test.after(() => {
     for (const dir of created) { fs.rmSync(dir, { recursive: true, force: true }); }
 });
@@ -43,7 +43,7 @@ test('R2: construction fails loudly without runId or with a relative or unwritab
     const blocker = path.join(dir, 'blocker');
     fs.writeFileSync(blocker, 'x');
     assert.throws(() => createTxObserver({ runId: 'r', outputDir: path.join(blocker, 'sub') }, null, 0));
-    assert.deepEqual(fs.readdirSync(dir), ['blocker']); // the probe file is removed after the check
+    assert.deepEqual(fs.readdirSync(dir), ['blocker']);                                             
 });
 
 test('200-tx round: counts reconcile, files are complete, manifest records config in force', async () => {
@@ -63,7 +63,7 @@ test('200-tx round: counts reconcile, files are complete, manifest records confi
     assert.equal(m.counts.pending_at_deactivate, 0);
     assert.equal(m.counts.duplicate_ids, 0);
     assert.equal(m.counts.no_id_records, 0);
-    assert.equal(m.counts.array_events, 4); // R10: arrays at finish positions 0, 50, 100, 150
+    assert.equal(m.counts.array_events, 4);                                                   
     assert.equal(m.counts.observer_errors, 0);
     assert.equal(m.config_in_force.event_strategy, 'msp_any');
     assert.equal(m.config_in_force.invoke_timeout_s, 60);
@@ -124,7 +124,7 @@ test('events outside the active window are not recorded (dispatch drops them)', 
     const dir = tmpDir();
     const rec = createTxObserver({ runId: 'RUN6', outputDir: dir }, null, 0);
     const dispatch = new FakeDispatch([rec]);
-    dispatch.txSubmitted(1); // before activate: dropped by the dispatch
+    dispatch.txSubmitted(1);                                            
     await dispatch.activate(1, 'm');
     dispatch.txSubmitted(1);
     dispatch.txFinished(new FakeTxStatus('t', 1, 2, 'success'));
@@ -142,12 +142,12 @@ test('O-8/O-9: a write failure in deactivate never throws, so the internal obser
     dispatch.txSubmitted(1);
     dispatch.txFinished(new FakeTxStatus('t', 1, 2, 'success'));
     fs.rmSync(out, { recursive: true });
-    fs.writeFileSync(out, 'not a directory'); // every write under out/ now fails
+    fs.writeFileSync(out, 'not a directory');                                    
     const errors = [];
     const orig = console.error;
     console.error = (msg) => errors.push(String(msg));
     try {
-        await dispatch.deactivate(); // must resolve
+        await dispatch.deactivate();                
     } finally {
         console.error = orig;
     }
