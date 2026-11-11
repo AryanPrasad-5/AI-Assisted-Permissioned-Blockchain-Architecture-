@@ -1,8 +1,8 @@
-"""Synthetic protobuf blocks for the ledger reader core. Not Fabric output; not E0 results.
+                                                                                           
 
-The encoder below writes the same wire format as fabric-protos for the fields the reader uses.
-Validation on a real fetched block is still required (E-a / E0-0).
-"""
+                                                                                              
+                                                                  
+   
 import sys
 from pathlib import Path
 
@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "e1"))
 
-import e1_ledger_blocks as lb  # noqa: E402
+import e1_ledger_blocks as lb              
 
 
 def varint(n):
@@ -68,7 +68,7 @@ def test_tables_infer_count_then_timer_for_n205_b10(tmp_path):
     assert rows[1].startswith("0,1,") and "CONFIG" in rows[1]
     assert rows[2].endswith(",count") and rows[-1].endswith(",timer")
     assert len((out / "ledger_tx.csv").read_text().splitlines()) == 1 + 1 + 205
-    # Refuses to overwrite existing outputs.
+                                            
     assert lb.main(["--blocks-dir", str(tmp_path), "--out-dir", str(out), "--max-message-count", "10",
                     "--preferred-max-bytes", "524288"]) == 2
 
@@ -77,7 +77,7 @@ def test_size_summary_and_stop_rule():
     small = [{"header_type": 3, "env_bytes": 3000}] * 1000
     s = lb.size_summary(small)
     assert s["max"] == 3000 and not s["stop_rule_45_x_max_gt_10MiB"] and s["enough_for_E0_1_size_estimate"]
-    big = small + [{"header_type": 3, "env_bytes": 233_017}]  # 45 * 233,017 > 10,485,760
+    big = small + [{"header_type": 3, "env_bytes": 233_017}]                             
     assert lb.size_summary(big)["stop_rule_45_x_max_gt_10MiB"]
     edge = small + [{"header_type": 3, "env_bytes": 233_016}]
     assert not lb.size_summary(edge)["stop_rule_45_x_max_gt_10MiB"]
@@ -88,7 +88,7 @@ def test_truncated_or_inconsistent_blocks_are_rejected(tmp_path):
     with pytest.raises(ValueError, match="truncated"):
         lb.parse_block(block(1, [e1], [0])[:-3])
     short_filter = tmp_path / "a.block"
-    short_filter.write_bytes(block(2, [e1, e1], [0]))  # TRANSACTIONS_FILTER shorter than the tx list
+    short_filter.write_bytes(block(2, [e1, e1], [0]))                                                
     with pytest.raises(ValueError, match="TRANSACTIONS_FILTER"):
         lb.read_blocks([short_filter])
     dup1, dup2 = tmp_path / "b.block", tmp_path / "c.block"

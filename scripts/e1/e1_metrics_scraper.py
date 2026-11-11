@@ -1,60 +1,60 @@
-"""Metrics scraper (LA-3; spec file 03 section 7; E1 v0.2 protocol section 9 steps 2 and 6, 12.6, 12.7).
+                                                                                                        
 
-Status: written 2026-11-09, tested with a fake HTTP fetcher and synthetic Prometheus text only.
-Never run against a Fabric operations endpoint. E0-0 ("Telemetry endpoints") must confirm the
-metric names, the ports, that the Prometheus provider is enabled and whether TLS is on.
+                                                                                               
+                                                                                             
+                                                                                       
 
-scrape     GET <url> (Prometheus text exposition format 0.0.4) for every target, once (phase before
-           or after) or every --interval seconds until --duration, --max-rounds or --stop-file
-           (phase during). Prints the plan; runs only with --execute.
-summarize  before/after deltas of counters and histograms per target and series, with resets seen
-           in any phase; derived inputs for gates V5 (run-mean block fill duration) and V6 (leader
-           changes). No outcome metric is computed here.
+                                                                                                   
+                                                                                              
+                                                                     
+                                                                                                 
+                                                                                                  
+                                                        
 
-Inputs  --target NAME:ROLE=URL (ROLE orderer | peer | other), --phase, --out-dir (new)
-Outputs (scrape; new --out-dir)
-  raw/<phase>_<round:06d>_<target>.prom   every response body exactly as received (also non-200)
-  scrapes.csv          one row per scrape attempt: host wall and monotonic times before/after, HTTP
-                       status, bytes, SHA-256, sample/malformed/duplicate counts, error
-  samples.csv          long format: round, target, t_mid_wall_ns, metric, family, type, labels
-                       (canonical k="v" sorted), value_raw, value, line_no, duplicate
-  metrics_anomalies.csv, metrics_manifest.json
-Outputs (summarize; new --out-dir): metric_deltas.csv, metrics_summary.json
+                                                                                      
+                               
+                                                                                                
+                                                                                                   
+                                                                                       
+                                                                                              
+                                                                                     
+                                              
+                                                                           
 
-Expected families (0.2, E0-0 remediation F3a, 2026-11-09)
-  per target    every successfully scraped target of the role must expose the family
-                (DEFAULT_EXPECTED; e.g. consensus_etcdraft_* on every consenter)
-  any of role   at least one successfully scraped target of the role must expose the family
-                (DEFAULT_EXPECTED_ANY). Real v2.5.16 output (E0-0 check 8): a labelled series, and so its
-                family, appears only after its first observation, so broadcast_processed_count exists only
-                on an orderer that handled a client Broadcast and blockcutter_* only on an orderer that cut
-                a block (the Raft leader). A node without them is normal; no node of the role with them
-                is missing data (expected_metric_absent, subject "any <role>").
-  summarize --expect-traffic (with --channel): identifies, from the run's before/after deltas on the
-                channel, the orderer(s) that received the transactions (broadcast_processed_count
-                type=ENDORSER_TRANSACTION status=SUCCESS, delta > 0) and the orderer(s) that cut blocks
-                (blockcutter_block_fill_duration_count delta > 0), and records them in the summary.
+                                                         
+                                                                                    
+                                                                                
+                                                                                           
+                                                                                                         
+                                                                                                          
+                                                                                                           
+                                                                                                       
+                                                                               
+                                                                                                    
+                                                                                                 
+                                                                                                       
+                                                                                                   
 
-Checks
-  completeness  scrape_failed (connection error or timeout), http_status (not 200), decode_error,
-                empty_scrape, malformed_line, expected_metric_absent (phase after),
-                no_successful_scrape, delta_unavailable (summarize), broadcast_receiver_unidentified
-                and block_cutter_unidentified (summarize --expect-traffic: no orderer shows the run's
-                broadcasts or block cuts on the channel)
-  consistency   duplicate_series (same metric and label set twice in one scrape; first kept),
-                counter_reset (a counter, _sum, _count or _bucket decreased), type_conflict,
-                host_clock_step (wall and monotonic elapsed times differ by more than 2 ms)
-  warnings      interval_overrun (a round ended after the next round was due; missed rounds are
-                counted, never back-filled), expected_metric_absent_early (before/during: a
-                channel series may not exist until the channel's first block), unknown_type,
-                exposition_timestamp (the target sent its own sample timestamp; scrape time is used),
-                cutter_not_leader (the block cutters differ from the orderers reporting is_leader = 1
-                after the run), broadcast_not_success (a non-SUCCESS broadcast delta on the channel)
+      
+                                                                                                 
+                                                                                   
+                                                                                                    
+                                                                                                     
+                                                        
+                                                                                             
+                                                                                            
+                                                                                           
+                                                                                               
+                                                                                           
+                                                                                            
+                                                                                                     
+                                                                                                     
+                                                                                                    
 
-Timestamps: host wall clock (time.time_ns) and monotonic clock, per scrape; t_mid = midpoint. They
-are aligned with container clocks only through e1_clock_handshake.py.
-Standard library only.
-"""
+                                                                                                  
+                                                                     
+                      
+   
 from __future__ import annotations
 
 import argparse
@@ -69,11 +69,11 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import e1_telemetry_common as tc  # noqa: E402
+import e1_telemetry_common as tc              
 
 TOOL_VERSION = "e1_metrics_scraper 0.2 (2026-11-09, E0-0 remediation F3a)"
-# Spec file 03 section 7 (names checked there against v2.5.16 metrics_reference.rst; confirmed on real
-# v2.5.16 output in E0-0 check 8). Every target of the role must expose these:
+                                                                                                      
+                                                                              
 DEFAULT_EXPECTED = {
     "orderer": ["consensus_etcdraft_is_leader", "consensus_etcdraft_leader_changes",
                 "consensus_etcdraft_committed_block_number"],
@@ -81,8 +81,8 @@ DEFAULT_EXPECTED = {
              "ledger_statedb_commit_time"],
     "other": [],
 }
-# At least one target of the role must expose these (E0-0 check 8: broadcast_processed_count was absent on
-# orderer2, which received no client Broadcast; blockcutter_* exist only where blocks were cut).
+                                                                                                          
+                                                                                                
 DEFAULT_EXPECTED_ANY = {
     "orderer": ["blockcutter_block_fill_duration", "broadcast_processed_count"],
     "peer": [],
@@ -111,9 +111,9 @@ DELTA_COLS = ["target", "role", "metric", "family", "type", "labels", "before", 
               "reset_seen", "status"]
 
 
-# ------------------------------------------------------------------ exposition parsing
+                                                                                       
 def _labels(line: str, i: int) -> tuple[tuple, int]:
-    """Parse {k="v",...} starting at line[i] == '{'. Returns (sorted pairs, index after '}')."""
+                                                                                                
     pairs, seen = [], set()
     i += 1
     while True:
@@ -190,7 +190,7 @@ def _esc(v: str) -> str:
 
 
 def labels_text(labels: tuple) -> str:
-    """Canonical label text: sorted, values escaped as in the exposition format."""
+                                                                                   
     return ",".join(f'{k}="{_esc(v)}"' for k, v in labels)
 
 
@@ -199,8 +199,8 @@ def has_label(text: str, key: str, value: str) -> bool:
 
 
 def parse_exposition(text: str) -> tuple[list[dict], dict, list[tuple[str, int, str, str]]]:
-    """Returns (samples, family types, problems [(kind, line_no, detail, raw)]). Duplicates are kept
-    with duplicate=True; the first occurrence is canonical."""
+                                                                                                    
+                                                              
     samples, types, problems, seen = [], {}, [], set()
     for no, raw in enumerate(text.split("\n"), start=1):
         line = raw.rstrip("\r")
@@ -245,7 +245,7 @@ def _monotone(sample: dict) -> bool:
     return sample["type"] in ("histogram", "summary") and sample["metric"].endswith(SUFFIXES)
 
 
-# ------------------------------------------------------------------ scraping
+                                                                             
 Fetch = Callable[[str, float], "tuple[int, bytes]"]
 
 
@@ -315,7 +315,7 @@ def run_scrape(targets: list[dict], phase: str, out_dir: Path, *, fetch: Fetch =
             status, body, error = None, b"", ""
             try:
                 status, body = fetch(t["url"], timeout_s)
-            except Exception as exc:  # connection refused, timeout, DNS: a missing observation, recorded
+            except Exception as exc:                                                                     
                 error = f"{type(exc).__name__}: {exc}"
             t1w, t1m = wall_ns(), mono_ns()
             mid = (t0w + t1w) // 2
@@ -370,8 +370,8 @@ def run_scrape(targets: list[dict], phase: str, out_dir: Path, *, fetch: Fetch =
                                             "labels": labels_text(s["labels"]), "value_raw": s["value_raw"],
                                             "value": s["value"], "line_no": s["line_no"], "duplicate": s["duplicate"]})
             scrape_rows.append(row)
-        # "any of role" families: judged per round over the targets of the role scraped successfully in it
-        # (a failed target is already an error above; a role with no successful target is no_successful_scrape)
+                                                                                                          
+                                                                                                               
         for role, fams in expected_any.items():
             scraped = [n for n in round_fams if role_of[n] == role]
             if not scraped:
@@ -423,11 +423,11 @@ def run_scrape(targets: list[dict], phase: str, out_dir: Path, *, fetch: Fetch =
     return manifest
 
 
-# ------------------------------------------------------------------ summarize
+                                                                              
 def traffic_roles(out_rows: list[dict], channel: str, leaders_after: list[str]) -> dict:
-    """Which orderers received the run's transactions and which cut its blocks, from before/after deltas on
-    the channel (E0-0 remediation F3a). Receivers: broadcast_processed_count type=ENDORSER_TRANSACTION
-    status=SUCCESS with delta > 0; cutters: blockcutter_block_fill_duration_count with delta > 0."""
+                                                                                                           
+                                                                                                      
+                                                                                                    
     receivers: dict[str, float] = {}
     by_status: dict[str, dict[str, float]] = {}
     cutters: dict[str, float] = {}
@@ -449,11 +449,11 @@ def traffic_roles(out_rows: list[dict], channel: str, leaders_after: list[str]) 
 
 def summarize(before: Path, after: Path, out_dir: Path, *, during: Path | None = None, channel: str | None = None,
               fresh_channel: bool = False, expect_traffic: bool = False, argv: list[str] | None = None) -> dict:
-    """Deltas after - before for counters, histogram/summary _sum/_count/_bucket, per target and series.
-    fresh_channel: a series labelled channel=<channel> that is absent before the run counts as 0 (the
-    channel was created for this run, so it had no observations); recorded per row as 'assumed_zero'.
-    expect_traffic (needs channel): the run submitted transactions on the channel, so at least one orderer
-    must show them received and at least one must show blocks cut (completeness errors otherwise)."""
+                                                                                                        
+                                                                                                     
+                                                                                                     
+                                                                                                          
+                                                                                                     
     if expect_traffic and channel is None:
         raise ValueError("expect_traffic needs a channel")
     an = tc.Anomalies(COMPLETENESS, CONSISTENCY, WARNINGS)
@@ -575,9 +575,9 @@ def summarize(before: Path, after: Path, out_dir: Path, *, during: Path | None =
     return summary
 
 
-# ------------------------------------------------------------------ CLI
+                                                                        
 def main(argv: list[str] | None = None, fetch: Fetch | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 Prometheus metrics scraper").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("scrape")
     s.add_argument("--target", action="append", required=True)

@@ -1,4 +1,4 @@
-"""Synthetic checks only. These do not represent E1 results."""
+                                                               
 import sys
 from pathlib import Path
 
@@ -8,8 +8,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "e1"))
 
-import e1_analysis as ea  # noqa: E402
-import e1_schedule as es  # noqa: E402
+import e1_analysis as ea              
+import e1_schedule as es              
 
 
 def test_schedule_is_balanced_seeded_and_never_repeats():

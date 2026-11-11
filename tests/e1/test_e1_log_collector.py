@@ -1,5 +1,5 @@
-"""Synthetic tests of the E0/E1 log collector. The log lines are written from the Fabric v2.5 message
-formats as read in planning; they are not captured container logs and are not E0/E1 results."""
+                                                                                                     
+                                                                                               
 import calendar
 import csv
 import datetime as dt
@@ -12,18 +12,18 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "e1"))
 
-import e1_log_collector as lc  # noqa: E402
-import e1_reconcile as rc  # noqa: E402
-from tests.e1.test_e1_reconcile import expect, synth_run  # noqa: E402
+import e1_log_collector as lc              
+import e1_reconcile as rc              
+from tests.e1.test_e1_reconcile import expect, synth_run              
 
 CH = "e1-r001"
 OTHER = "e1-r000"
-T0 = calendar.timegm((2026, 11, 11, 10, 0, 0)) * 1000  # epoch ms
+T0 = calendar.timegm((2026, 11, 11, 10, 0, 0)) * 1000            
 ORDERERS = ["orderer0", "orderer1", "orderer2"]
 PEERS = ["peer0org1", "peer0org2"]
 
 
-# ------------------------------------------------------------------ synthetic log lines
+                                                                                        
 def stamp(ms: int) -> str:
     d = dt.datetime.fromtimestamp(ms // 1000, tz=dt.timezone.utc)
     return d.strftime("%Y-%m-%d %H:%M:%S") + f".{ms % 1000:03d}"
@@ -62,23 +62,23 @@ def noise(ms, i):
     return docker(ms) + header(ms, "comm.grpc.server", "1", seq=i) + "unary call completed grpc.code=OK"
 
 
-def write_ms(block):      # orderer write time of block b
+def write_ms(block):                                     
     return T0 + block * 2000
 
 
-def commit_ms(block):     # peer commit time: 30 ms after the write
+def commit_ms(block):                                              
     return write_ms(block) + 30
 
 
 def make_logs(tmp: Path, blocks=range(1, 13), ntx=lambda b: 10, mutate=None):
-    """Write one stderr log per container. mutate(name, lines) may edit the line list in place."""
+                                                                                                  
     tmp.mkdir(parents=True, exist_ok=True)
     inputs = []
     for i, name in enumerate(ORDERERS):
         lines = ["", noise(T0, 1)]
         for b in blocks:
             lines.append(oline(b, write_ms(b) + i, node=i + 1))
-            lines.append(oline(b, write_ms(b) + 500 + i, node=i + 1, channel=OTHER))  # other channel
+            lines.append(oline(b, write_ms(b) + 500 + i, node=i + 1, channel=OTHER))                 
             lines.append(noise(write_ms(b) + 3, b))
         if mutate:
             mutate(name, lines)
@@ -117,7 +117,7 @@ def find_line(lines, needle):
     return next(i for i, line in enumerate(lines) if needle in line)
 
 
-# ------------------------------------------------------------------ timestamp parsing
+                                                                                      
 @pytest.mark.parametrize("text,ns", [
     ("2026-11-11T10:00:00.123456789Z rest", (T0 + 123) * 1_000_000 + 456_789),
     ("2026-11-11T10:00:00.5Z rest", (T0 + 500) * 1_000_000),
@@ -147,10 +147,10 @@ def test_fabric_header_zones():
     assert lc.parse_fabric_header(f"{stamp(T0)} +0530 0001 INFO [m] f -> x").ms == T0 - 19_800_000
     ist = lc.parse_fabric_header(f"{stamp(T0)} IST 0001 INFO [m] f -> x")
     assert ist is not None and ist.ms is None
-    assert lc.parse_fabric_header("2026-11-11 10:00:00 UTC 0001 INFO [m] f -> x") is None  # no ms
+    assert lc.parse_fabric_header("2026-11-11 10:00:00 UTC 0001 INFO [m] f -> x") is None         
 
 
-# ------------------------------------------------------------------ clean run
+                                                                              
 def test_clean_run_complete_and_traceable(tmp_path):
     inputs = make_logs(tmp_path / "logs")
     out = tmp_path / "out"
@@ -159,14 +159,14 @@ def test_clean_run_complete_and_traceable(tmp_path):
     assert m["events"]["orderer_write"] == 3 * 12 * 2 and m["events"]["peer_commit"] == 2 * 12 * 2
     assert m["events"]["in_scope_canonical"] == 5 * 12 and m["events"]["duplicates"] == 0
     assert m["events"]["per_channel"][OTHER] == {"orderer_write": 36, "peer_commit": 24}
-    for acc in m["inputs"]:  # every line accounted for
+    for acc in m["inputs"]:                            
         assert acc["lines_total"] == acc["lines_blank"] + acc["lines_event"] + acc["lines_malformed_event"] + acc["lines_other"]
         assert acc["sha256"] == hashlib.sha256(Path(acc["path"]).read_bytes()).hexdigest()
     ow = read(out, "orderer_write.csv")
-    assert {r["in_scope"] for r in ow} == {"True", "False"}  # other channel kept, not dropped
+    assert {r["in_scope"] for r in ow} == {"True", "False"}                                   
     first = next(r for r in ow if r["container"] == "orderer1" and r["block"] == "4" and r["in_scope"] == "True")
     src_lines = Path(first["source_file"]).read_text(encoding="utf-8").split("\n")
-    assert src_lines[int(first["line_no"]) - 1] == first["raw_line"]  # original reference resolves
+    assert src_lines[int(first["line_no"]) - 1] == first["raw_line"]                               
     assert int(first["fabric_ms"]) == write_ms(4) + 1 and first["node"] == "2" and first["raft_index"] == "8"
     summary = read(out, "block_summary.csv")
     assert [int(r["block"]) for r in summary] == list(range(1, 13))
@@ -174,7 +174,7 @@ def test_clean_run_complete_and_traceable(tmp_path):
     assert summary[0]["orderer_first_write_ms"] == str(write_ms(1)) and summary[0]["ledger_tx_count"] == "10"
     rec = read(out, "peer_commit_reconcile.csv")
     assert [(int(r["block"]), int(r["commit_ms"])) for r in rec] == [(b, commit_ms(b)) for b in range(1, 13)]
-    for name, digest in m["outputs_sha256"].items():  # outputs hashed, LF only
+    for name, digest in m["outputs_sha256"].items():                           
         data = (out / name).read_bytes()
         assert hashlib.sha256(data).hexdigest() == digest and b"\r" not in data
 
@@ -202,7 +202,7 @@ def test_peer_line_without_breakdown(tmp_path):
     assert row["state_validation_ms"] == "" and row["commit_duration_ms"] == "25" and row["tx_count"] == "10"
 
 
-# ------------------------------------------------------------------ missing, malformed, incomplete
+                                                                                                   
 def test_missing_event_flagged(tmp_path):
     def drop(name, lines):
         if name == "orderer1":
@@ -268,7 +268,7 @@ def test_unattributed_channel_and_unusable_zone(tmp_path):
     assert m["status"] == "INCOMPLETE"
     found = kinds(out)[0]
     assert ("channel_unattributed", "orderer0", "2") in found and ("fabric_ts_unusable", "orderer0", "3") in found
-    assert m["events"]["per_channel"]["<unattributed>"]["orderer_write"] == 1  # kept, not dropped
+    assert m["events"]["per_channel"]["<unattributed>"]["orderer_write"] == 1                     
 
 
 def test_no_in_scope_events(tmp_path):
@@ -277,12 +277,12 @@ def test_no_in_scope_events(tmp_path):
     assert m["status"] == "INCOMPLETE" and ("no_in_scope_events", "", "") in kinds(out)[0]
 
 
-# ------------------------------------------------------------------ duplicates
+                                                                               
 def test_exact_duplicates_from_overlapping_captures(tmp_path):
     inputs = make_logs(tmp_path / "l")
     first = inputs[0].path.read_text(encoding="utf-8").split("\n")
     overlap = tmp_path / "l" / "orderer0.part2.stderr.log"
-    overlap.write_text("\n".join(first[-7:]), encoding="utf-8")  # last 2 blocks again, no final newline
+    overlap.write_text("\n".join(first[-7:]), encoding="utf-8")                                         
     inputs.insert(1, lc.LogInput("orderer0", "orderer", overlap))
     out = tmp_path / "o"
     m = lc.run_parse(inputs, CH, out, blocks_csv=blocks_csv())
@@ -305,7 +305,7 @@ def test_conflicting_duplicate_is_inconsistent(tmp_path):
     assert row["tx_count"] == "7" and row["canonical"] == "False"
 
 
-# ------------------------------------------------------------------ ordering and reconciliation
+                                                                                                
 def test_timestamp_order_violation(tmp_path):
     def back(name, lines):
         if name == "orderer0":
@@ -337,7 +337,7 @@ def test_commit_before_write(tmp_path):
 
 def test_commit_within_offset_bound_is_not_flagged(tmp_path):
     def same_ms(name, lines):
-        if name == "peer0org2":  # 1 ms before the first write: inside the default 1 ms bound
+        if name == "peer0org2":                                                              
             lines[find_line(lines, f"[{CH}] Committed block [3]")] = pline(3, write_ms(3) - 1, 10)
     assert lc.run_parse(make_logs(tmp_path / "l", mutate=same_ms), CH, tmp_path / "o")["status"] == "COMPLETE"
 
@@ -366,7 +366,7 @@ def test_event_in_unexpected_role(tmp_path):
     assert m["status"] == "INCONSISTENT" and ("event_in_unexpected_role", "peer0org1", "99") in kinds(out)[0]
 
 
-# ------------------------------------------------------------------ warnings
+                                                                             
 def test_warnings_do_not_fail_the_run(tmp_path):
     def warn(name, lines):
         if name == "orderer0":
@@ -382,17 +382,17 @@ def test_warnings_do_not_fail_the_run(tmp_path):
 
 def test_invalid_utf8_is_flagged_not_dropped(tmp_path):
     inputs = make_logs(tmp_path / "l")
-    p = inputs[3].path  # peer0org1
+    p = inputs[3].path             
     data = p.read_bytes().replace(b"commitHash=[47dc", b"commitHash=[47dc\xff", 1)
     p.write_bytes(data)
     out = tmp_path / "o"
     m = lc.run_parse(inputs, CH, out, blocks_csv=blocks_csv())
     assert m["status"] == "COMPLETE_WITH_WARNINGS" and m["anomalies"]["warning"] == {"decode_replaced": 1}
     row = next(r for r in read(out, "peer_commit.csv") if "decode_replaced" in r["flags"])
-    assert row["block"] == "1" and row["commit_hash"] == ""  # hash unreadable after replacement, event kept
+    assert row["block"] == "1" and row["commit_hash"] == ""                                                 
 
 
-# ------------------------------------------------------------------ CLI and output safety
+                                                                                          
 def cli_args(inputs, out, *extra):
     args = ["parse", "--channel", CH, "--out-dir", str(out)]
     for i in inputs:
@@ -406,9 +406,9 @@ def test_cli_exit_codes_and_no_overwrite(tmp_path, capsys):
     assert lc.main(cli_args(inputs, out, "--expect-blocks", "1:12", "--reconcile-peer", "peer0org1")) == 0
     assert "LOGS COMPLETE" in capsys.readouterr().out
     before = {p.name: p.read_bytes() for p in out.iterdir()}
-    assert lc.main(cli_args(inputs, out)) == 2  # refuses to overwrite
+    assert lc.main(cli_args(inputs, out)) == 2                        
     assert {p.name: p.read_bytes() for p in out.iterdir()} == before
-    assert lc.main(cli_args(inputs, tmp_path / "o2", "--expect-blocks", "1:13")) == 1  # block 13 missing
+    assert lc.main(cli_args(inputs, tmp_path / "o2", "--expect-blocks", "1:13")) == 1                    
     assert lc.main(cli_args(inputs, tmp_path / "o3", "--reconcile-peer", "orderer0")) == 2
     assert lc.main(cli_args(inputs, tmp_path / "o4", "--expect-blocks", "9:3")) == 2
     missing = [lc.LogInput("peer9", "peer", tmp_path / "nope.log")]
@@ -416,7 +416,7 @@ def test_cli_exit_codes_and_no_overwrite(tmp_path, capsys):
     assert not (tmp_path / "o5").exists()
 
 
-# ------------------------------------------------------------------ capture
+                                                                            
 def test_capture_plan_and_validation(capsys, tmp_path):
     cmds = lc.capture_commands(["orderer0.example.com"], "2026-11-11T10:00:00Z", "2026-11-11T10:05:00.5Z")
     assert cmds == [["docker", "logs", "--timestamps", "--since", "2026-11-11T10:00:00Z",
@@ -431,7 +431,7 @@ def test_capture_plan_and_validation(capsys, tmp_path):
     out = tmp_path / "cap"
     assert lc.main(["capture", "--container", "orderer0", "--since", "2026-11-11T10:00:00Z",
                     "--until", "2026-11-11T10:05:00Z", "--out-dir", str(out)]) == 0
-    assert "PLAN docker logs --timestamps" in capsys.readouterr().out and not out.exists()  # dry run writes nothing
+    assert "PLAN docker logs --timestamps" in capsys.readouterr().out and not out.exists()                          
 
 
 def test_capture_with_fake_runner(tmp_path):
@@ -452,7 +452,7 @@ def test_capture_with_fake_runner(tmp_path):
         lc.run_capture(["orderer0"], "2026-11-11T10:00:00Z", "2026-11-11T10:05:00Z", out, runner)
 
 
-# ------------------------------------------------------------------ hand-off to the reconciler
+                                                                                               
 def _peer_logs_from_commits(tmp: Path, peer_commits, shift=None):
     shift = shift or {}
     lines = [pline(int(p["block"]), int(p["commit_ms"]) + shift.get(int(p["block"]), 0), 10) for p in peer_commits]
@@ -471,7 +471,7 @@ def test_reconcile_peer_file_feeds_e1_reconcile(tmp_path, shift, verdict):
     commits = read(out, "peer_commit_reconcile.csv")
     checks = rc.reconcile(records, submits, manifest, ledger, expect(), commits)
     v4 = next(c for c in checks if c.check_id == "V4-cross-source")
-    assert v4.status == verdict, v4.detail  # a commit logged 60 ms after the finals must fail
+    assert v4.status == verdict, v4.detail                                                    
 
 
 def test_reconciler_rejects_duplicate_commit_rows():

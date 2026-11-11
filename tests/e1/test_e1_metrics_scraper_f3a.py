@@ -1,8 +1,8 @@
-"""Metrics scraper 0.2 (E0-0 remediation F3a, 2026-11-09): per-target versus any-of-role expected families,
-and identification of the receiving and block-cutting orderers. Synthetic exposition text shaped like the
-real E0-0 check 8 output (channel e1-e00s): orderer1 received the 3 setup transactions from the peer CLI,
-orderer3 received the run's transaction from the gateway, orderer2 (the Raft leader) cut the block and
-never received a client Broadcast, so it has no broadcast_processed_count family at all."""
+                                                                                                           
+                                                                                                         
+                                                                                                         
+                                                                                                      
+                                                                                           
 import sys
 from pathlib import Path
 
@@ -11,8 +11,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "e1"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import e1_metrics_scraper as ms  # noqa: E402
-import synthetic_fabric as sf  # noqa: E402
+import e1_metrics_scraper as ms              
+import synthetic_fabric as sf              
 
 CH = "e1-e00s"
 T3 = [{"name": f"orderer{i}", "role": "orderer", "url": f"http://o{i}:9443/metrics"} for i in (1, 2, 3)]
@@ -54,7 +54,7 @@ def kinds(m):
     return {**m["anomalies"]["error"], **m["anomalies"]["warning"]}
 
 
-# ------------------------------------------------------------------ positive
+                                                                             
 def test_e0_0_shape_is_complete_under_the_any_of_role_rule(tmp_path):
     m = scrape(tmp_path, "after", AFTER)
     assert m["status"] == "COMPLETE"
@@ -63,7 +63,7 @@ def test_e0_0_shape_is_complete_under_the_any_of_role_rule(tmp_path):
 
 
 def test_the_0_1_rule_reproduces_the_e0_0_failure(tmp_path):
-    """Regression record of the defect: the per-target rule of 0.1 flags orderer2 and orderer1/orderer3."""
+                                                                                                           
     m = scrape(tmp_path, "after", AFTER, expected=OLD_EXPECTED_0_1, expected_any={})
     bad = [a for a in ms.tc.read_csv(tmp_path / "after" / "metrics_anomalies.csv")
            if a["kind"] == "expected_metric_absent"]
@@ -77,16 +77,16 @@ def test_summary_identifies_receiver_and_cutter(tmp_path):
     s = ms.summarize(tmp_path / "before", tmp_path / "after", tmp_path / "s", channel=CH, fresh_channel=True,
                      expect_traffic=True)
     assert s["status"] == "COMPLETE"
-    assert s["traffic"]["broadcast_receivers"] == {"orderer3": 1.0}         # not orderer1 (setup only, delta 0)
+    assert s["traffic"]["broadcast_receivers"] == {"orderer3": 1.0}                                             
     assert s["traffic"]["block_cutters"] == {"orderer2": 1.0}
     assert s["traffic"]["leaders_after"] == ["orderer2"]
     assert s["derived"]["orderer3"]["broadcast_success_delta"] == 1.0
     assert s["derived"]["orderer2"]["blocks_cut_delta"] == 1.0 and s["derived"]["orderer2"]["fill_duration_mean_s"] == 2.0
 
 
-# ------------------------------------------------------------------ negative (missing data is still detected)
+                                                                                                              
 def test_any_family_absent_on_every_orderer_is_incomplete_after_and_a_warning_before(tmp_path):
-    none = {u: orderer_text(1 if "o2" in u else 0) for u in AFTER}          # no broadcast, no blockcutter anywhere
+    none = {u: orderer_text(1 if "o2" in u else 0) for u in AFTER}                                                 
     m = scrape(tmp_path, "after", none)
     assert m["status"] == "INCOMPLETE" and kinds(m)["expected_metric_absent"] == 2
     rows = [a for a in ms.tc.read_csv(tmp_path / "after" / "metrics_anomalies.csv")]
@@ -124,7 +124,7 @@ def test_expect_traffic_without_deltas_is_incomplete(tmp_path):
     assert s["status"] == "INCOMPLETE"
     assert kinds(s)["broadcast_receiver_unidentified"] == 1 and kinds(s)["block_cutter_unidentified"] == 1
     s2 = ms.summarize(tmp_path / "before", tmp_path / "after", tmp_path / "s2", channel=CH, fresh_channel=True)
-    assert s2["status"] == "COMPLETE"                                         # opt-in: unchanged without the flag
+    assert s2["status"] == "COMPLETE"                                                                             
 
 
 def test_cutter_not_leader_and_rejected_broadcast_are_warnings(tmp_path):

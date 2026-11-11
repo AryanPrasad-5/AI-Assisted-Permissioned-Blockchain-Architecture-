@@ -1,16 +1,16 @@
-"""Shared helpers for the LA-3 telemetry tools: block fetch, metrics scraper, resource sampler, clock
-handshake and run orchestrator. Standard library only (also runs under the WSL system python3).
+                                                                                                     
+                                                                                               
 
-Status vocabulary (the same as e1_log_collector.py):
-  COMPLETE                no anomaly                                        exit 0
-  COMPLETE_WITH_WARNINGS  warnings only                                     exit 0
-  INCOMPLETE              a completeness error (missing or malformed data)  exit 1
-  INCONSISTENT            no completeness error, but a consistency error    exit 1
-  invalid request, unreadable input or an existing output directory         exit 2
+                                                    
+                                                                                  
+                                                                                  
+                                                                                  
+                                                                                  
+                                                                                  
 
-Every anomaly kind must be declared by the tool as completeness, consistency or warning. An
-undeclared kind raises, so nothing can be recorded without a severity.
-"""
+                                                                                           
+                                                                      
+   
 from __future__ import annotations
 
 import csv
@@ -28,8 +28,8 @@ INCOMPLETE, INCONSISTENT = "INCOMPLETE", "INCONSISTENT"
 EXIT = {COMPLETE: 0, COMPLETE_WITH_WARNINGS: 0, INCOMPLETE: 1, INCONSISTENT: 1}
 USABLE = (COMPLETE, COMPLETE_WITH_WARNINGS)
 
-# Channel batch symbols. One table for every E1 tool, test, record and document (owner ruling
-# 2026-11-09): P is PreferredMaxBytes in bytes, never a message count.
+                                                                                             
+                                                                      
 SYMBOLS = {
     "B": ("Orderer.BatchSize.MaxMessageCount", "transactions per block (count)"),
     "tau": ("Orderer.BatchTimeout", "Go duration"),
@@ -47,17 +47,17 @@ def subprocess_runner(argv: list[str], timeout: float = 120.0) -> tuple[int | No
 
 @dataclass
 class Anomaly:
-    severity: str          # error | warning
-    category: str          # completeness | consistency | warning
+    severity: str                           
+    category: str                                                
     kind: str
-    subject: str = ""      # container, target, block or file the anomaly is about
+    subject: str = ""                                                             
     detail: str = ""
-    source: str = ""       # file:line, tick or round reference
-    raw: str = ""          # offending text, kept verbatim
+    source: str = ""                                           
+    raw: str = ""                                         
 
 
 class Anomalies:
-    """Ordered anomaly list with declared kinds."""
+                                                   
 
     def __init__(self, completeness: Iterable[str], consistency: Iterable[str], warnings: Iterable[str]):
         self.kinds = {k: "completeness" for k in completeness}
@@ -101,7 +101,7 @@ _ORDER = [COMPLETE, COMPLETE_WITH_WARNINGS, INCONSISTENT, INCOMPLETE]
 
 
 def worst(statuses: Iterable[str]) -> str:
-    """The least usable status (INCOMPLETE > INCONSISTENT > COMPLETE_WITH_WARNINGS > COMPLETE)."""
+                                                                                                  
     return max(statuses, key=_ORDER.index, default=COMPLETE)
 
 
@@ -131,8 +131,8 @@ def _cell(v):
 
 
 def write_csv_x(path: Path, cols: list[str], rows: list[dict]) -> str:
-    """Write a CSV with LF line ends; refuses to overwrite. Returns its SHA-256.
-    A row key that is not a column raises: no field is ever dropped silently."""
+                                                                                
+                                                                                
     for r in rows:
         extra = set(r) - set(cols)
         if extra:
@@ -167,8 +167,8 @@ _WIN_PATH = re.compile(r"^[A-Za-z]:[\\/]|\\")
 
 
 def windows_style_paths(obj, where: str = "") -> list[str]:
-    """Keys whose string values look like Windows paths (drive letter or backslash). A Linux process in WSL
-    cannot open them; translate with `wslpath -u`."""
+                                                                                                           
+                                                     
     out = []
     if isinstance(obj, dict):
         for k, v in obj.items():

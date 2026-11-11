@@ -1,57 +1,57 @@
-"""Log collector: orderer "Writing block" and peer "Committed block" events (spec file 03 section 7).
+                                                                                                     
 
-Status: written 2026-11-09, tested on synthetic log lines only. The message formats are from the
-Fabric v2.5 source as read during planning:
-  orderer  orderer/consensus/etcdraft/chain.go:894  "Writing block [n] (Raft index: i) to ledger"
-           followed by zap fields "channel=<ch> node=<id>"
-  peer     core/ledger/kvledger/kv_ledger.go:712    "[<ch>] Committed block [n] with k transaction(s)
-           in Xms (state_validation=..ms block_and_pvtdata_commit=..ms state_commit=..ms) commitHash=[..]"
-Both the 2.x header ("<date> <time> <TZ> <id> <LEVL> [module] func -> msg") and the 1.4-style header
-("<date> <time> <TZ> [module] func -> <LEVL> <id> msg") are accepted, with or without ANSI colour.
-E0-0 ("Telemetry endpoints") must confirm the formats on real container logs before a COMPLETE
-status is relied on.
+                                                                                                
+                                           
+                                                                                                 
+                                                          
+                                                                                                     
+                                                                                                          
+                                                                                                    
+                                                                                                  
+                                                                                              
+                    
 
-Steps
-  capture  docker logs --timestamps --since T0 --until T1 <container>. stdout and stderr are kept in
-           separate files (Fabric logs to stderr). Prints the commands; runs them only with --execute.
-  parse    reads captured files and writes, into a new --out-dir:
-             orderer_write.csv            every "Writing block" line (all containers, all channels)
-             peer_commit.csv              every "Committed block" line
-             log_anomalies.csv            every problem found, with file, line number and raw text
-             block_summary.csv            one row per expected/observed in-scope block
-             peer_commit_reconcile.csv    (with --reconcile-peer) block, commit_ms for e1_reconcile.py
-             log_collector_manifest.json  inputs (SHA-256, line accounting), counts, status
+     
+                                                                                                    
+                                                                                                      
+                                                                 
+                                                                                                   
+                                                                      
+                                                                                                  
+                                                                                      
+                                                                                                      
+                                                                                           
 
-Nothing is silently discarded:
-  * every input line is counted as blank, event, malformed event candidate, or other;
-  * every line containing an event marker becomes an event row or a malformed_event_line anomaly;
-  * events of other channels are kept with in_scope = false;
-  * duplicates are kept: the first occurrence is canonical; later ones are labelled exact (same
-    raw text, e.g. overlapping captures; warning) or conflicting (same container, channel and block
-    but different content; error).
+                              
+                                                                                     
+                                                                                                 
+                                                            
+                                                                                               
+                                                                                                   
+                                  
 
-Timestamps: fabric_ms is the container clock from the Fabric header (ms, truncated); it is the
-value used downstream (commit_ms). docker_ns is the daemon's receive time (ns), a cross-check only.
+                                                                                              
+                                                                                                   
 
-Status (manifest and exit code)
-  COMPLETE                no anomalies                                              exit 0
-  COMPLETE_WITH_WARNINGS  warnings only (exact duplicates, docker/fabric skew)      exit 0
-  INCOMPLETE              missing events, malformed event lines, unusable           exit 1
-                          timestamps, unattributed channel, empty input, no events
-  INCONSISTENT            no completeness error, but conflicting duplicates,         exit 1
-                          ordering violations, commit before write, tx-count mismatch
-  unreadable input or an existing output directory                                  exit 2
+                               
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                  
+                                                                                           
+                                                                                     
+                                                                                          
 
-Usage
-  python scripts/e1/e1_log_collector.py capture --container orderer0.example.com --container ...
-         --since 2026-11-11T10:00:00Z --until 2026-11-11T10:05:00Z --out-dir run/logs [--execute]
-  python scripts/e1/e1_log_collector.py parse --channel e1-r001
-         --orderer-log orderer0=run/logs/orderer0.stderr.log [--orderer-log ...]
-         --peer-log peer0org1=run/logs/peer0org1.stderr.log [--peer-log ...]
-         --out-dir run/logs_parsed [--blocks-csv run/ledger/blocks.csv | --expect-blocks 5:27]
-         [--reconcile-peer peer0org1] [--offset-bound-ms 1] [--ts-lag-ms 1000]
-Standard library only (runs under the WSL system python3 as well as the repo venv).
-"""
+     
+                                                                                                
+                                                                                                 
+                                                               
+                                                                                
+                                                                            
+                                                                                              
+                                                                              
+                                                                                   
+   
 from __future__ import annotations
 
 import argparse
@@ -94,16 +94,16 @@ CONSISTENCY_ERRORS = {"conflicting_duplicate", "ts_order_violation", "log_order_
 WARNINGS = {"exact_duplicate", "docker_ts_missing", "ts_docker_before_fabric", "ts_docker_lag", "decode_replaced"}
 
 
-# ------------------------------------------------------------------ timestamps
+                                                                               
 def _epoch(y: str, mo: str, d: str, h: str, mi: str, s: str) -> int:
-    """UTC calendar fields to epoch seconds; ValueError for impossible dates (timegm alone accepts them)."""
+                                                                                                            
     fields = (int(y), int(mo), int(d), int(h), int(mi), int(s))
-    datetime.datetime(*fields)  # range validation only
+    datetime.datetime(*fields)                         
     return calendar.timegm(fields + (0, 0, 0))
 
 
 def parse_docker_ts(line: str) -> tuple[str, int | None, str]:
-    """Split a `docker logs --timestamps` prefix. Returns (ts_text, epoch_ns or None, rest)."""
+                                                                                               
     m = _DOCKER_TS.match(line)
     if not m:
         return "", None, line
@@ -131,7 +131,7 @@ class Header:
 
 
 def parse_fabric_header(text: str) -> Header | None:
-    """Parse a Fabric log header. ms is None when the zone cannot be converted exactly."""
+                                                                                          
     m = _FABRIC_HEAD.match(text)
     if not m:
         return None
@@ -152,17 +152,17 @@ def parse_fabric_header(text: str) -> Header | None:
         sign = 1 if tz[0] == "+" else -1
         epoch_ms = (secs - sign * (int(tz[1:3]) * 3600 + int(tz[3:5]) * 60)) * 1000 + int(ms)
     else:
-        epoch_ms = None  # zone abbreviation other than UTC: not converted (ambiguous)
+        epoch_ms = None                                                               
     ts_text = text[:m.start("rest")].rstrip(" ")
     return Header(ts_text, epoch_ms, tz, r.group("level"), r.group("module"), r.group("msg"))
 
 
-# ------------------------------------------------------------------ records
+                                                                            
 @dataclass
 class Event:
-    kind: str                # orderer_write | peer_commit
+    kind: str                                             
     container: str
-    container_role: str      # role given on the command line
+    container_role: str                                      
     source_file: str
     stream: str
     line_no: int
@@ -195,7 +195,7 @@ class Event:
 
     @property
     def content(self) -> tuple:
-        """Event identity without the source position, for duplicate classification."""
+                                                                                       
         return (self.fabric_ms, self.raft_index, self.node, self.tx_count, self.commit_duration_ms,
                 self.state_validation_ms, self.block_and_pvtdata_commit_ms, self.state_commit_ms, self.commit_hash)
 
@@ -216,7 +216,7 @@ class Anomaly:
 @dataclass
 class LogInput:
     container: str
-    role: str        # orderer | peer
+    role: str                        
     path: Path
 
     @property
@@ -233,9 +233,9 @@ def _anom(out: list[Anomaly], kind: str, **kw) -> None:
     out.append(Anomaly(_sev(kind), kind, **kw))
 
 
-# ------------------------------------------------------------------ parsing
+                                                                            
 def parse_line(text: str, inp: LogInput, line_no: int, raw: str) -> tuple[Event | None, list[tuple[str, str]]]:
-    """Parse one decoded line known to contain an event marker. Returns (event or None, problems)."""
+                                                                                                     
     problems: list[tuple[str, str]] = []
     clean = _ANSI.sub("", text)
     docker_text, docker_ns, rest = parse_docker_ts(clean)
@@ -280,7 +280,7 @@ def parse_line(text: str, inp: LogInput, line_no: int, raw: str) -> tuple[Event 
 
 
 def read_lines(path: Path) -> tuple[list[tuple[str, str, bool]], dict]:
-    """Return [(decoded line, raw repr for output, had_replacement)] and file facts."""
+                                                                                       
     data = path.read_bytes()
     parts = data.split(b"\n")
     if parts and parts[-1] == b"":
@@ -337,7 +337,7 @@ def parse_inputs(inputs: list[LogInput], anomalies: list[Anomaly]) -> tuple[list
     return events, accounting
 
 
-# ------------------------------------------------------------------ analysis
+                                                                             
 def mark_duplicates(events: list[Event], anomalies: list[Anomaly]) -> None:
     first: dict[tuple, Event] = {}
     for ev in events:
@@ -377,7 +377,7 @@ def analyse(events: list[Event], inputs: list[LogInput], channel: str, blocks: l
                   "peer_commit": sorted({i.container for i in inputs if i.role == "peer"})}
     by_key = {(e.kind, e.container, e.block): e for e in canon}
 
-    # missing events
+                    
     for kind, names in containers.items():
         for name in names:
             for b in blocks:
@@ -385,7 +385,7 @@ def analyse(events: list[Event], inputs: list[LogInput], channel: str, blocks: l
                     _anom(anomalies, "missing_event", container=name, channel=channel, block=b,
                           detail=f"no {kind} event for block {b}")
 
-    # per-container ordering: timestamps by block, and block order by file position
+                                                                                   
     for kind, names in containers.items():
         for name in names:
             evs = sorted((e for e in canon if e.kind == kind and e.container == name), key=lambda e: e.block)
@@ -407,7 +407,7 @@ def analyse(events: list[Event], inputs: list[LogInput], channel: str, blocks: l
                               detail=f"block {b.block} logged after block {a.block} (line {a.line_no})",
                               raw_line=b.raw_line)
 
-    # docker receive time vs Fabric header time (warnings only)
+                                                               
     for e in canon:
         if e.docker_ns is None or e.fabric_ms is None:
             continue
@@ -422,7 +422,7 @@ def analyse(events: list[Event], inputs: list[LogInput], channel: str, blocks: l
         _anom(anomalies, kind, container=e.container, channel=channel, block=e.block, source_file=e.source_file,
               line_no=e.line_no, detail=f"docker - fabric = {delta_ms:.3f} ms", raw_line=e.raw_line)
 
-    # per-block cross-source summary
+                                    
     rows = []
     expected_set = set(blocks)
     all_blocks = sorted(expected_set | {e.block for e in canon})
@@ -478,7 +478,7 @@ def status_of(anomalies: list[Anomaly]) -> str:
     return "COMPLETE"
 
 
-# ------------------------------------------------------------------ output
+                                                                           
 ORDERER_COLS = ["container", "container_role", "channel", "in_scope", "block", "raft_index", "node", "fabric_ts",
                 "fabric_ms", "docker_ts", "docker_ns", "level", "module", "source_file", "stream", "line_no",
                 "canonical", "dup_kind", "dup_of", "flags", "raw_line"]
@@ -512,7 +512,7 @@ def _write_csv(path: Path, cols: list[str], rows: list[dict]) -> str:
 def run_parse(inputs: list[LogInput], channel: str, out_dir: Path, *, blocks_csv: list[dict] | None = None,
               expect: tuple[int, int] | None = None, reconcile_peer: str | None = None,
               offset_bound_ms: float = 1.0, ts_lag_ms: float = 1000.0, argv: list[str] | None = None) -> dict:
-    """Parse, analyse and write outputs. Returns the manifest. Raises FileExistsError if out_dir exists."""
+                                                                                                           
     anomalies: list[Anomaly] = []
     events, accounting = parse_inputs(inputs, anomalies)
     for e in events:
@@ -571,7 +571,7 @@ def run_parse(inputs: list[LogInput], channel: str, out_dir: Path, *, blocks_csv
     return manifest
 
 
-# ------------------------------------------------------------------ capture
+                                                                            
 Runner = Callable[[list[str]], "tuple[int, bytes, bytes]"]
 
 
@@ -595,7 +595,7 @@ def capture_commands(containers: list[str], since: str, until: str) -> list[list
 
 
 def run_capture(containers: list[str], since: str, until: str, out_dir: Path, runner: Runner) -> dict:
-    """Run docker logs per container; keep stdout and stderr; record hashes. Never overwrites."""
+                                                                                                 
     cmds = capture_commands(containers, since, until)
     out_dir.mkdir(parents=True, exist_ok=False)
     records = []
@@ -622,7 +622,7 @@ def run_capture(containers: list[str], since: str, until: str, out_dir: Path, ru
     return manifest
 
 
-# ------------------------------------------------------------------ CLI
+                                                                        
 def _named(values: list[str], role: str) -> list[LogInput]:
     out = []
     for v in values or []:
@@ -641,7 +641,7 @@ def _range(text: str) -> tuple[int, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 orderer and peer log collector").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     cap = sub.add_parser("capture")
     cap.add_argument("--container", action="append", required=True)

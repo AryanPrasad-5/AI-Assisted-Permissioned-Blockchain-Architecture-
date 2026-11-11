@@ -1,54 +1,54 @@
-"""Per-run completeness proof for E0/E1 (instrumentation spec file 03 section 8; E0-1, E0-2).
+                                                                                             
 
-Status: written 2026-11-09, tested on synthetic data only. No Fabric run exists yet.
-Spec: D:/PLAN_BLOCK18/e1_v02_proposal_2026-11-09/03_E1_instrumentation_correction_spec_PROPOSED_2026-11-09.md
-(PROPOSED). Acceptance values are those of the E0 protocol (file 05, PROPOSED). Nothing here
-changes an acceptance criterion: each check below is one listed criterion, implemented literally.
+                                                                                    
+                                                                                                             
+                                                                                            
+                                                                                                 
 
-Inputs (one measured round, one channel):
-  recorder CSV      <base>.csv  from scripts/e1/caliper/e1_per_tx_recorder.js
-                    columns tx_id, seq_finish, create_ms, final_ms, status, verified, err, obs_hr_ns,
-                    worker, round, label
-  submits CSV       <base>.submits.csv  columns seq_submit, t_submit_evt_ms, count
-  manifest JSON     <base>.manifest.json (counts, config_in_force)
-  ledger_tx CSV     from scripts/e1/e1_ledger_blocks.py: tx_id, block, index, header_type,
-                    validation_code, env_bytes (every transaction in the channel, config included)
-  peer_commit CSV   optional: block, commit_ms (peer "Committed block" log time, container clock)
-  expectations      N, max_message_count (B), preferred_max_bytes (P), event strategy, invoke
-                    timeout, binding, clock offset bound; optional tx_ids of other rounds (warm-up)
+                                         
+                                                                             
+                                                                                                     
+                                        
+                                                                                  
+                                                                  
+                                                                                          
+                                                                                                  
+                                                                                                 
+                                                                                             
+                                                                                                   
 
-Checks (each PASS / FAIL / NOT EVALUATED; the run is VALID only if no check FAILS):
-  V1-counts        submitted = finished = CSV rows = N; pending_at_deactivate = 0; sum of submit
-                   events = submitted
-  V1-duplicates    0 duplicate tx_id (recomputed from the CSV and as reported by the manifest)
-  V1-ids           no_id_records = 0 and no empty tx_id (a thrown connector error skips the drain)
-  V3-success       every success tx_id is in the ledger with validation code VALID
-  V3-failures      every failed record is classified: not_ordered (absent from the ledger) or
-                   committed_invalid:<code>; a failed record that is VALID in the ledger is a FAIL
-  V3-foreign       every endorser transaction in the channel belongs to this round or to a declared
-                   other round (warm-up)
-  V3-ledger-count  ledger transactions of this round = records that reached ordering
-                   (success + committed_invalid); with expect_all_success also = N
-  V4-order         create_ms <= final_ms for every row; submit stamps non-decreasing
-  V4-cross-source  (only if peer_commit is given) final_ms >= commit_ms(block) - offset bound
-  V7-config        manifest event strategy, invoke timeout and binding equal the protocol values
-  E0-1-blocks      (only if expect_block_pattern) every non-final round block holds B tx, the
-                   final block holds N mod B (or B), and cut causes are count..., then timer
-                   (or count if N mod B = 0)
-  E0-1-causes      (only if blocks CSV with inferred_cut_cause is given) the ledger reader's cut
-                   causes equal the causes recomputed here
+                                                                                   
+                                                                                                
+                                     
+                                                                                              
+                                                                                                  
+                                                                                  
+                                                                                             
+                                                                                                  
+                                                                                                   
+                                        
+                                                                                    
+                                                                                  
+                                                                                    
+                                                                                             
+                                                                                                
+                                                                                             
+                                                                                            
+                                            
+                                                                                                
+                                                          
 
-Cut-cause rule (E1 v0.2 protocol section 12.6; Fabric v2.5 blockcutter.go Ordered): isolated if the
-block holds one envelope larger than P; count if tx_count = B; byte_overflow if the block's bytes
-plus the next envelope's bytes exceed P; otherwise timer. A block cut just before an isolated
-oversized envelope is classified byte_overflow by this rule (its bytes plus the next envelope's
-bytes always exceed P).
+                                                                                                   
+                                                                                                 
+                                                                                             
+                                                                                               
+                       
 
-Usage:
-  python scripts/e1/e1_reconcile.py --run <base> --ledger-tx ledger_tx.csv --expect expect.json
-         [--peer-commit peer_commit.csv] [--blocks blocks.csv] [--gate-out gate.json]
-Exit codes: 0 VALID, 1 INVALID (a check failed), 2 unreadable input.
-"""
+      
+                                                                                               
+                                                                                     
+                                                                    
+   
 from __future__ import annotations
 
 import argparse
@@ -60,9 +60,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 VALID = 0
-HEADER_TYPE_ENDORSER = 3  # common.HeaderType ENDORSER_TRANSACTION
-# peer.TxValidationCode names (fabric-protos peer/transaction.proto). Verify against the pinned
-# v2.5.16 protos in E0-0 before citing a name in a report.
+HEADER_TYPE_ENDORSER = 3                                          
+                                                                                               
+                                                          
 VALIDATION_CODE_NAMES = {
     0: "VALID", 1: "NIL_ENVELOPE", 2: "BAD_PAYLOAD", 3: "BAD_COMMON_HEADER", 4: "BAD_CREATOR_SIGNATURE",
     5: "INVALID_ENDORSER_TRANSACTION", 6: "INVALID_CONFIG_TRANSACTION", 7: "UNSUPPORTED_TX_PAYLOAD",
@@ -114,9 +114,9 @@ def code_name(code: int) -> str:
     return VALIDATION_CODE_NAMES.get(code, f"CODE_{code}")
 
 
-# ------------------------------------------------------------------ cut causes
+                                                                               
 def infer_cut_causes(ledger: list[dict], max_message_count: int, preferred_max_bytes: int) -> dict[int, str]:
-    """Per-block cut cause for every block that holds endorser transactions, in ledger order."""
+                                                                                                
     by_block: dict[int, list[dict]] = {}
     for tx in ledger:
         by_block.setdefault(int(tx["block"]), []).append(tx)
@@ -140,7 +140,7 @@ def infer_cut_causes(ledger: list[dict], max_message_count: int, preferred_max_b
     return causes
 
 
-# ------------------------------------------------------------------ reconciliation
+                                                                                   
 def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, ledger: list[dict],
               exp: Expectations, peer_commit: list[dict] | None = None,
               blocks: list[dict] | None = None) -> list[Check]:
@@ -150,7 +150,7 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
     ids = [r["tx_id"] for r in records]
     dup_ids = sorted(k for k, v in Counter(i for i in ids if i).items() if v > 1)
 
-    # V1 counts
+               
     submitted, finished = counts.get("submitted"), counts.get("finished")
     pending = counts.get("pending_at_deactivate")
     submit_sum = sum(int(s["count"]) for s in submits) if submits is not None else None
@@ -160,26 +160,26 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
                         f"N={exp.n} submitted={submitted} finished={finished} rows={rows} "
                         f"pending_at_deactivate={pending} submit_events_sum={submit_sum}"))
 
-    # V1 duplicates
+                   
     reported_dups = counts.get("duplicate_ids")
     ok = not dup_ids and reported_dups == 0
     checks.append(Check("V1-duplicates", PASS if ok else FAIL,
                         f"recomputed={len(dup_ids)} manifest={reported_dups} examples={dup_ids[:3]}"))
 
-    # V1 ids
+            
     empty = sum(1 for i in ids if not i)
     no_id = counts.get("no_id_records")
     checks.append(Check("V1-ids", PASS if (empty == 0 and no_id == 0) else FAIL,
                         f"empty_tx_id_rows={empty} manifest_no_id_records={no_id}"))
 
-    # Ledger joins
+                  
     ledger_end = [t for t in ledger if int(t["header_type"]) == HEADER_TYPE_ENDORSER]
     by_id: dict[str, list[dict]] = {}
     for t in ledger_end:
         by_id.setdefault(t["tx_id"], []).append(t)
     round_ids = {i for i in ids if i}
 
-    # V3 success
+                
     bad = []
     for r in records:
         if r["status"] != "success":
@@ -193,7 +193,7 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
     checks.append(Check("V3-success", PASS if not bad else FAIL,
                         f"success={n_success} not_valid_in_ledger={len(bad)} examples={bad[:3]}"))
 
-    # V3 failures (classification)
+                                  
     classes: Counter = Counter()
     contradictions = []
     for r in records:
@@ -210,12 +210,12 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
                         f"failed={sum(classes.values()) + len(contradictions)} classes={dict(sorted(classes.items()))} "
                         f"failed_but_VALID_in_ledger={contradictions[:3]}"))
 
-    # V3 foreign
+                
     foreign = sorted({t["tx_id"] for t in ledger_end} - round_ids - exp.other_round_tx_ids)
     checks.append(Check("V3-foreign", PASS if not foreign else FAIL,
                         f"foreign_ledger_tx={len(foreign)} examples={foreign[:3]}"))
 
-    # V3 ledger count
+                     
     in_ledger = [t for t in ledger_end if t["tx_id"] in round_ids]
     reached = n_success + sum(v for k, v in classes.items() if k.startswith("committed_invalid"))
     ok = len(in_ledger) == reached and (not exp.expect_all_success or len(in_ledger) == exp.n)
@@ -223,7 +223,7 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
                         f"ledger_round_tx={len(in_ledger)} reached_ordering={reached} N={exp.n} "
                         f"expect_all_success={exp.expect_all_success}"))
 
-    # V4 order
+              
     neg = [r["tx_id"] for r in records if float(r["create_ms"]) > float(r["final_ms"])]
     stamps = [float(s["t_submit_evt_ms"]) for s in sorted(submits or [], key=lambda s: int(s["seq_submit"]))]
     non_mono = sum(1 for a, b in zip(stamps, stamps[1:]) if b < a)
@@ -231,11 +231,11 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
                         f"create_after_final={len(neg)} submit_stamp_decreases={non_mono}"
                         + ("" if submits is not None else " (submits file not given)")))
 
-    # V4 cross-source
+                     
     if peer_commit is None:
         checks.append(Check("V4-cross-source", NOT_EVALUATED, "peer_commit not given"))
     else:
-        # One commit time per block; a repeated block would otherwise be silently overwritten.
+                                                                                              
         dup_blocks = sorted(b for b, k in Counter(int(p["block"]) for p in peer_commit).items() if k > 1)
         commit_ms = {int(p["block"]): float(p["commit_ms"]) for p in peer_commit}
         block_of = {t["tx_id"]: int(t["block"]) for t in in_ledger}
@@ -253,7 +253,7 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
                             f"finished_before_commit={len(early)} blocks_without_commit_time={missing} "
                             f"duplicate_commit_rows={len(dup_blocks)} offset_bound_ms={exp.clock_offset_bound_ms}"))
 
-    # V7 config in force
+                        
     cfg = manifest.get("config_in_force", {})
     wanted = {"event_strategy": exp.event_strategy, "invoke_timeout_s": exp.invoke_timeout_s, "binding": exp.binding}
     diffs = {k: (cfg.get(k), v) for k, v in wanted.items() if v is not None and cfg.get(k) != v}
@@ -262,7 +262,7 @@ def reconcile(records: list[dict], submits: list[dict] | None, manifest: dict, l
     else:
         checks.append(Check("V7-config", PASS if not diffs else FAIL, f"mismatches(manifest, protocol)={diffs}"))
 
-    # E0-1 block pattern and cut causes
+                                       
     causes = infer_cut_causes(ledger, exp.max_message_count, exp.preferred_max_bytes)
     round_blocks = sorted({int(t["block"]) for t in in_ledger})
     if exp.expect_block_pattern:
@@ -292,7 +292,7 @@ def verdict(checks: list[Check]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 transaction reconciliation command").splitlines()[0])
     ap.add_argument("--run", required=True, type=Path, help="recorder base path (without .csv)")
     ap.add_argument("--ledger-tx", required=True, type=Path)
     ap.add_argument("--expect", required=True, type=Path)

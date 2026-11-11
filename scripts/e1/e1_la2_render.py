@@ -1,31 +1,31 @@
-"""LA-2 renderer: every environment-specific and per-run testbed file, derived from one env.json.
+                                                                                                 
 
-Status: written 2026-11-09. Outputs are checked by the repo's own validators (e1_channel_run.Network and
-render_configtx, e1_run_orchestrator.Plan) on synthetic paths only. It starts nothing and contacts nothing.
-Execution architecture (2026-11-09 readiness report): all tools, Fabric CLIs and the docker CLI run inside
-the Ubuntu 24.04 WSL2 distro; every path in env.json is an absolute POSIX path as seen from that distro.
+                                                                                                        
+                                                                                                           
+                                                                                                          
+                                                                                                        
 
-env.json
-  test_network       fabric-samples/test-network at the pinned commit 5789681b4f4d24e58fa40f19a69f5496892374b6
-  fabric_bin         directory with peer, osnadmin, configtxgen, configtxlator (Fabric 2.5.16 tarball)
-  fabric_cfg         fabric-samples/config (core.yaml for the peer CLI)
-  repo               this repository as seen from WSL (e.g. /mnt/c/OJT_SEM3/AI-Assisted-Permissioned-...)
-  caliper_workspace  host directory bind-mounted at /hyperledger/caliper/workspace in the caliper container
-  chaincode          {"name": "e1asset", "version": "1.0", "sequence": 1}
-  protocol           {"event_strategy": .., "invoke_timeout_s": .., "binding": "fabric:2.5"} (pinned OPT-1 values)
+        
+                                                                                                              
+                                                                                                      
+                                                                       
+                                                                                                         
+                                                                                                           
+                                                                         
+                                                                                                                  
 
-Subcommands
-  network   --env env.json (--package-id <label>:<sha256> | --bootstrap) --out network.json
-            (--bootstrap: placeholder id for e1_chaincode_deploy.py only; channel runs refuse it)
-  run       --env env.json --network network.json --run-id r001 --channel e1-r001 --B 45 --tau 2s --P 10485760 --n 1000
-            --rate 160 [--warmup-s 30] [--workload create|fail-every|rmw] --out-plan run_plan.json
-            writes <caliper_workspace>/runs/<run_id>/: benchmark.yaml, networkconfig.yaml, ccp-org1.json,
-            modules/*.js (copied from the repo, SHA-256 checked), render_record.json; then the run plan
-  commands  --env env.json   prints the E0-0 bring-up command lines (writes nothing)
-Caliper files are written as JSON, which is valid YAML 1.2 (Caliper parses its config files as YAML).
-Symbols: B = MaxMessageCount (count), tau = BatchTimeout, P = PreferredMaxBytes (bytes), A = AbsoluteMaxBytes.
-Standard library only.
-"""
+           
+                                                                                           
+                                                                                                 
+                                                                                                                       
+                                                                                                  
+                                                                                                         
+                                                                                                       
+                                                                                    
+                                                                                                     
+                                                                                                              
+                      
+   
 from __future__ import annotations
 
 import argparse
@@ -38,7 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import e1_telemetry_common as tc  # noqa: E402
+import e1_telemetry_common as tc              
 
 TOOL_VERSION = "e1_la2_render 0.1 (2026-11-09)"
 CAL_WS, CAL_ORGS, CAL_CONTAINER = "/hyperledger/caliper/workspace", "/fabric/organizations", "caliper"
@@ -73,10 +73,10 @@ def _org(tn: str, *parts: str) -> str:
     return posixpath.join(tn, "organizations", *parts)
 
 
-# ------------------------------------------------------------------ network.json
+                                                                                 
 def network(env: dict, package_id: str | None, bootstrap: bool = False) -> dict:
-    """bootstrap: the package id is not known before the chaincode is packaged; e1_chaincode_deploy.py may use a
-    bootstrap description (placeholder id, "bootstrap": true), which e1_channel_run.py and the orchestrator refuse."""
+                                                                                                                
+                                                                                                                      
     if bootstrap == (package_id is not None):
         raise ValueError("give exactly one of a package id or bootstrap")
     if bootstrap:
@@ -103,10 +103,10 @@ def network(env: dict, package_id: str | None, bootstrap: bool = False) -> dict:
     }
 
 
-# ------------------------------------------------------------------ per run
+                                                                            
 def caliper_files(env: dict, run_id: str, channel: str, n: int | None, rate: float, warmup_s: int,
                   workload: str, duration_s: int | None = None) -> dict:
-    """The run's Caliper benchmark, network config and connection profile (container paths)."""
+                                                                                               
     run_c = posixpath.join(CAL_WS, "runs", run_id)
     org1 = ("peerOrganizations", "org1.example.com")
     args = {"runId": run_id, "contractId": env["chaincode"]["name"], "invokerIdentity": "User1", "valueBytes": 128,
@@ -178,7 +178,7 @@ def render_run(env: dict, network_path: str, run_id: str, B: int, tau: str, P: i
                warmup_s: int, workload: str, out_plan: Path, *, repo_root: Path | None = None,
                ws_root: Path | None = None, block_pattern: bool = True, argv: list[str] | None = None,
                channel: str | None = None, duration_s: int | None = None) -> dict:
-    """repo_root / ws_root: where the repo and the workspace are on THIS machine (default: env paths)."""
+                                                                                                         
     if not RUN_ID.match(run_id):
         raise ValueError(f"run id {run_id!r} must match {RUN_ID.pattern}")
     if workload not in ("create", "fail-every", "rmw"):
@@ -193,7 +193,7 @@ def render_run(env: dict, network_path: str, run_id: str, B: int, tau: str, P: i
     if duration_s is not None:
         cell["duration_s"] = duration_s
     plan = run_plan(env, network_path, run_id, channel, cell, warmup_s, block_pattern)
-    import e1_run_orchestrator as ro  # validates B, tau, P, containers, targets (network file must exist here)
+    import e1_run_orchestrator as ro                                                                           
     ro.Plan(plan)
     repo = repo_root or Path(env["repo"])
     out = (ws_root or Path(env["caliper_workspace"])) / "runs" / run_id
@@ -215,7 +215,7 @@ def render_run(env: dict, network_path: str, run_id: str, B: int, tau: str, P: i
     return {"plan": plan, "record": record, "dir": out}
 
 
-# ------------------------------------------------------------------ bring-up commands (printed only)
+                                                                                                     
 def commands(env: dict) -> list[str]:
     tn, repo, ws = env["test_network"], env["repo"], env["caliper_workspace"]
     compose = (f"docker compose -p e1 -f compose/compose-test-net.yaml -f compose/docker/docker-compose-test-net.yaml "
@@ -244,9 +244,9 @@ def commands(env: dict) -> list[str]:
     ]
 
 
-# ------------------------------------------------------------------ CLI
+                                                                        
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 benchmark rendering command").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     nw = sub.add_parser("network")
     nw.add_argument("--env", required=True, type=Path)
@@ -284,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "network":
             import e1_channel_run as cr
             doc = network(env, args.package_id, bootstrap=args.bootstrap)
-            cr.Network(doc)                       # same validation as the channel tool
+            cr.Network(doc)                                                            
             if args.out.exists():
                 print(f"refusing to overwrite {args.out}")
                 return 2

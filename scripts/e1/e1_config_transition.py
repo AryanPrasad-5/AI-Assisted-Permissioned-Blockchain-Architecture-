@@ -1,9 +1,9 @@
-"""Pure validation for a one-field Fabric channel-config transition.
+                                                                    
 
-The live actuator and the independent verifier both use this module. It has
-no Fabric or subprocess dependency so the safety rules can be tested with
-fixtures and cannot be bypassed by a command-line execution path.
-"""
+                                                                           
+                                                                         
+                                                                 
+   
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Any
 
 
 class TransitionValidationError(ValueError):
-    """A committed configuration does not match the approved transition."""
+                                                                           
 
     def __init__(self, category: str, message: str):
         self.category = category
@@ -36,8 +36,33 @@ def _groups(config: dict) -> tuple[dict, dict, dict]:
         raise TransitionValidationError("incomplete_evidence", f"configuration lacks the expected Orderer groups: {exc}") from exc
 
 
+def channel_id_from_block(block: dict) -> str:
+    try:
+        value = block["data"]["data"][0]["payload"]["header"]["channel_header"]["channel_id"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise TransitionValidationError("incomplete_evidence", f"configuration block has no channel identity: {exc}") from exc
+    if not isinstance(value, str) or not value:
+        raise TransitionValidationError("incomplete_evidence", "configuration block channel identity is empty")
+    return value
+
+
+def expected_batch_size_config(before_block: dict, target_max_message_count: int) -> dict:
+    """Derive the full config expected after exactly one approved B change."""
+    before = copy.deepcopy(_config(before_block))
+    try:
+        group, orderer, values = _groups(before)
+        sequence = before.get("sequence", 0)
+        before["sequence"] = str(int(sequence) + 1) if isinstance(sequence, str) else int(sequence) + 1
+        version = values["BatchSize"]["version"]
+        values["BatchSize"]["version"] = str(int(version) + 1) if isinstance(version, str) else int(version) + 1
+        values["BatchSize"]["value"]["max_message_count"] = int(target_max_message_count)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise TransitionValidationError("incomplete_evidence", f"cannot derive expected post-transition config: {exc}") from exc
+    return before
+
+
 def _normalise_expected_change(before: dict, after: dict) -> tuple[dict, dict]:
-    """Remove only the approved value/version and config-sequence changes."""
+                                                                             
     before_norm = copy.deepcopy(before)
     after_norm = copy.deepcopy(after)
     _, _, before_values = _groups(before_norm)
@@ -58,7 +83,7 @@ def validate_batch_size_transition(
     expected_sequence_increment: int = 1,
     expected_batch_size_increment: int = 1,
 ) -> dict[str, Any]:
-    """Validate the complete expected post-commit state."""
+                                                           
     before = _config(before_block)
     after = _config(after_block)
     before_group, before_orderer, before_values = _groups(before)

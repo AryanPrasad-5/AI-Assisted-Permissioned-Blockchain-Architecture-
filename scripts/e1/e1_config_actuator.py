@@ -1,21 +1,21 @@
-"""Safe, measured Fabric channel configuration actuator for one approved field.
+                                                                               
 
-This tool implements the standard channel configuration update sequence for
-``Orderer.BatchSize.MaxMessageCount`` only:
+                                                                           
+                                           
 
-1. fetch and decode the current config block;
-2. construct a copied config with one bounded value changed;
-3. proto-encode both configs and let ``configtxlator compute_update`` calculate
-   the versioned read/write set;
-4. wrap the update in a common.Envelope;
-5. submit with an explicit OrdererMSP admin identity; and
-6. poll a newly fetched config block until the target value and a later block
-   number are independently verified.
+                                             
+                                                            
+                                                                               
+                                
+                                        
+                                                         
+                                                                             
+                                     
 
-The default CLI mode is read-only. Live submission requires both ``--execute``
-and ``--approved-target`` equal to the requested value. Every attempt gets a
-new artifact directory and JSON record; existing artifacts are never reused.
-"""
+                                                                              
+                                                                            
+                                                                            
+   
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import copy
 import datetime as dt
 try:
     import fcntl
-except ImportError:  # pragma: no cover - exercised only by Windows-host imports
+except ImportError:                                                             
     fcntl = None
     import msvcrt
 import hashlib
@@ -43,11 +43,14 @@ from typing import Any, Callable, Iterator
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from fabric_perf.controllers.base import FabricConfig  # noqa: E402
-from e1_config_transition import (  # noqa: E402
+from fabric_perf.controllers.base import FabricConfig, coerce_config
+from fabric_perf.controllers.transition_fence import ChannelTransitionFence, FenceError
+from e1_config_transition import (              
     TransitionValidationError,
+    expected_batch_size_config,
     validate_batch_size_transition,
 )
+from e1_independent_config_verify import IndependentFabricConfigVerifier
 
 
 TOOL_VERSION = "e1_config_actuator 0.1"
@@ -56,11 +59,11 @@ DEFAULT_MIN_B, DEFAULT_MAX_B = 10, 800
 
 
 class ActuatorError(RuntimeError):
-    """A configuration update was not completed and verified."""
+    pass
 
 
 class SafetyError(ActuatorError):
-    """The requested update violates the approved actuator policy."""
+    pass
 
 
 def utc_now() -> str:
@@ -79,29 +82,56 @@ def _utc_delta_ms(start: str | None, end: str | None) -> float | None:
 
 
 def _validate_committed_transition(before_block: dict, after_block: dict, target_b: int) -> dict:
-    """Adapt pure transition errors to the actuator's safety-error type."""
+                                                                           
     try:
         return validate_batch_size_transition(before_block, after_block, target_b)
     except TransitionValidationError as exc:
         raise SafetyError(f"committed configuration verification failed [{exc.category}]: {exc}") from exc
 
 
-def validate_rollback_preconditions(record: dict, current_config: dict, approved_target: int | None) -> FabricConfig:
-    """Validate a rollback without contacting Fabric or submitting anything."""
+def validate_rollback_preconditions(
+    record: dict, current_block: dict, approved_target: int | None, *, authorization: str | None = None,
+) -> FabricConfig:
+    """Require exact full-state evidence from a fresh independently fetched block."""
     if record.get("success") is not True:
         raise SafetyError("rollback requires a successful update record")
-    before = record.get("before_config")
-    after = record.get("after_config")
-    if not isinstance(before, dict) or not isinstance(after, dict):
-        raise SafetyError("rollback record lacks complete before/after configuration evidence")
+    if authorization != f"ROLLBACK:{record.get('channel')}:{record.get('attempt_id')}":
+        raise SafetyError("rollback requires explicit transition-specific authorization")
+    before, after = record.get("before_config"), record.get("after_config")
+    before_doc, after_doc = record.get("before_config_document"), record.get("after_config_document")
+    if not all(isinstance(value, dict) for value in (before, after, before_doc, after_doc)):
+        raise SafetyError("rollback record lacks exact full pre-state and verified post-state documents")
+    if not record.get("verification_checks", {}).get("independent_verification"):
+        raise SafetyError("rollback record lacks successful independent post-state verification")
+    if not isinstance(current_block, dict):
+        raise SafetyError("rollback requires a fresh independently retrieved configuration block")
+    try:
+        channel = current_block["data"]["data"][0]["payload"]["header"]["channel_header"]["channel_id"]
+        current_doc = config_from_block_document(current_block)
+        recorded_sequence = int(after_doc["sequence"])
+        current_sequence = int(current_doc["sequence"])
+        recorded_after_block = int(record["after_block_number"])
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise SafetyError(f"rollback current or recorded configuration evidence is incomplete: {exc}") from exc
+    if channel != record.get("channel"):
+        raise SafetyError("rollback current configuration belongs to a different channel")
+    if current_sequence != recorded_sequence:
+        raise SafetyError("rollback refused: current configuration sequence differs from recorded post-state")
+    if block_number(current_block) < recorded_after_block:
+        raise SafetyError("rollback current config block predates the recorded verified post-state")
+    if current_doc != after_doc:
+        raise SafetyError("rollback refused: current full configuration differs from recorded verified post-state")
+    synthetic_before = {"data": {"data": [{"payload": {"data": {"config": before_doc}}}]}}
+    synthetic_after = {"data": {"data": [{"payload": {"data": {"config": after_doc}}}]}}
+    _validate_committed_transition(synthetic_before, synthetic_after, int(after.get("max_message_count", -1)))
+    if config_from_block(synthetic_before)[0].as_dict() != before or config_from_block(synthetic_after)[0].as_dict() != after:
+        raise SafetyError("rollback bounded config projection does not match recorded full configuration documents")
     try:
         target_b = int(before["max_message_count"])
     except (KeyError, TypeError, ValueError) as exc:
         raise SafetyError("rollback record lacks the exact recorded pre-update MaxMessageCount") from exc
     if approved_target != target_b:
         raise SafetyError("refusing live rollback: --approved-target must equal the recorded previous value")
-    if current_config != after:
-        raise SafetyError("rollback refused: current configuration differs from the recorded post-update configuration")
     try:
         return FabricConfig(**{k: before[k] for k in ("max_message_count", "batch_timeout_ms", "preferred_max_bytes", "absolute_max_bytes", "orderers")})
     except (KeyError, TypeError, ValueError) as exc:
@@ -128,7 +158,7 @@ def _load(path: Path) -> dict:
 
 
 def config_from_block(block: dict) -> tuple[FabricConfig, dict]:
-    """Extract the active Fabric batch config and policy facts from a block."""
+                                                                               
     try:
         config = block["data"]["data"][0]["payload"]["data"]["config"]
         channel_group = config["channel_group"]
@@ -201,7 +231,7 @@ def config_from_block_document(block: dict) -> dict:
 
 
 def updated_config(original_config: dict, target_max_message_count: int) -> dict:
-    """Return a deep copy changing exactly Orderer/BatchSize/max_message_count."""
+                                                                                  
     if isinstance(target_max_message_count, bool) or not isinstance(target_max_message_count, int):
         raise SafetyError("target MaxMessageCount must be an integer")
     if not DEFAULT_MIN_B <= target_max_message_count <= DEFAULT_MAX_B:
@@ -216,7 +246,7 @@ def updated_config(original_config: dict, target_max_message_count: int) -> dict
 
 
 def _find_max_message_count(update: dict, key: str) -> int | None:
-    """Read the changed BatchSize value from a decoded ConfigUpdate read/write set."""
+                                                                                      
     try:
         values = update[key]["groups"]["Orderer"]["values"]
         return int(values["BatchSize"]["value"]["max_message_count"])
@@ -265,18 +295,21 @@ class UpdateRecord:
     submission_duration_ms: float | None = None
     commit_latency_ms: float | None = None
     independent_verification_timestamp_utc: str | None = None
+    commit_to_independent_verification_ms: float | None = None
     before_block_data_hash: str | None = None
     after_block_data_hash: str | None = None
     before_block_sha256: str | None = None
     after_block_sha256: str | None = None
     verification_checks: dict | None = None
+    before_config_document: dict | None = None
+    after_config_document: dict | None = None
 
     def as_dict(self) -> dict:
         return self.__dict__.copy()
 
 
 class FabricChannelConfigActuator:
-    """One-parameter, serialized, commit-verified Fabric config actuator."""
+                                                                            
 
     def __init__(
         self,
@@ -298,6 +331,9 @@ class FabricChannelConfigActuator:
         commit_timeout_s: float = 60.0,
         command_timeout_s: float = 30.0,
         runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+        fence_dir: Path | None = None,
+        independent_verifier: Callable[[str, dict, FabricConfig, dict], dict] | None = None,
+        live_enabled: bool = False,
     ):
         if min_b < 1 or max_b < min_b:
             raise SafetyError("invalid allowed MaxMessageCount range")
@@ -319,6 +355,14 @@ class FabricChannelConfigActuator:
         self.cooldown_s, self.poll_s = cooldown_s, poll_s
         self.commit_timeout_s, self.command_timeout_s = commit_timeout_s, command_timeout_s
         self.runner = runner
+        self.transition_fence = ChannelTransitionFence(
+            Path(fence_dir) if fence_dir is not None else self.fabric_cfg_path.parent / ".e1-actuator-fence",
+            channel, cooldown_s=cooldown_s,
+        )
+        self.independent_verifier = independent_verifier
+        self.live_enabled = live_enabled
+        if live_enabled and not isinstance(independent_verifier, IndependentFabricConfigVerifier):
+            raise SafetyError("live execution requires the concrete IndependentFabricConfigVerifier")
         self._last_active: FabricConfig | None = None
 
     def _env(self) -> dict[str, str]:
@@ -333,28 +377,232 @@ class FabricChannelConfigActuator:
 
     @contextmanager
     def _exclusive_lock(self) -> Iterator[None]:
-        with self.lock_path.open("a+", encoding="utf-8") as lock:
-            if fcntl is not None:
-                try:
-                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError as exc:
-                    raise SafetyError("another configuration update is in progress") from exc
-            else:
-                try:
-                    lock.seek(0)
-                    lock.write("0")
-                    lock.flush()
-                    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
-                except OSError as exc:
-                    raise SafetyError("another configuration update is in progress") from exc
-            try:
+        try:
+            with self.transition_fence.channel_lock():
                 yield
-            finally:
-                if fcntl is not None:
-                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
-                else:
-                    lock.seek(0)
-                    msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+        except FenceError as exc:
+            raise SafetyError(str(exc)) from exc
+
+    def _require_live_verifier(self) -> None:
+        if not self.live_enabled or self.independent_verifier is None:
+            raise SafetyError("live submission disabled: production execution requires live_enabled and an independent verifier")
+
+    def _assert_signing_msp_key_permissions(self) -> None:
+        """Check metadata only; never open or log private-key bytes."""
+        if os.name != "posix":
+            raise SafetyError("signing is disabled because POSIX private-key permissions cannot be verified")
+        keystore = self.orderer_admin_msp / "keystore"
+        try:
+            directory_stat = keystore.stat(follow_symlinks=False)
+            if not keystore.is_dir() or keystore.is_symlink():
+                raise SafetyError("OrdererMSP keystore must be a real directory")
+            if directory_stat.st_mode & 0o022:
+                raise SafetyError("OrdererMSP keystore directory is group/world writable")
+            entries = list(keystore.iterdir())
+        except OSError as exc:
+            raise SafetyError(f"cannot inspect OrdererMSP keystore metadata: {exc}") from exc
+        private_files = []
+        for path in entries:
+            try:
+                info = path.lstat()
+            except OSError as exc:
+                raise SafetyError("cannot inspect a keystore entry") from exc
+            if path.is_symlink():
+                raise SafetyError("symlinks are not permitted in the OrdererMSP keystore")
+            if not path.is_file():
+                continue
+            private_files.append((path, info))
+            if info.st_mode & 0o077:
+                raise SafetyError("a private-key file grants group or other permissions")
+            if hasattr(os, "geteuid") and info.st_uid != os.geteuid():
+                raise SafetyError("a private-key file is not owned by the actuator process identity")
+        if not private_files:
+            raise SafetyError("OrdererMSP keystore contains no regular signing-key file")
+
+    def _submit_config_update(self, label: str, envelope_path: Path, config_block_path: Path,
+                              target: FabricConfig, work: Path,
+                              commands: list[CommandRecord]) -> None:
+        """Validate offline with Fabric's pinned native code, then stay blocked.
+
+        This deliberately does not call ``peer channel update``. The verifier
+        is new and has not had independent security review, and the actuator
+        still lacks an approved signing lifecycle. Passing local validation is
+        therefore necessary but not sufficient to authorize a broadcast.
+        """
+        repo = Path(__file__).resolve().parents[2]
+        verifier_script = repo / "scripts" / "e1" / "run_fabric_config_verifier.sh"
+
+        def run_inspection(path: Path, label: str) -> dict:
+            command_index = len(commands)
+            self._run(label, ["bash", str(verifier_script), "--inspect-only", "--config-block",
+                              str(config_block_path), "--envelope", str(path), "--channel", self.channel],
+                      work, commands)
+            try:
+                return json.loads((work / f"{command_index:02d}_{label}.stdout").read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise SafetyError(f"Fabric envelope inspection evidence is incomplete: {exc}") from exc
+
+        before_sign = run_inspection(envelope_path, "inspect_config_update_before_signing")
+        if before_sign.get("valid") is not True or before_sign.get("fabric_source_commit") != "f871cf92a026aba7b12e6f06d71ded3e6e659d71":
+            raise SafetyError("Fabric-native pre-sign inspection did not establish channel-bound ConfigUpdate bytes")
+        candidate = envelope_path
+        if before_sign.get("signature_count") == 0 and before_sign.get("outer_signature_present") is not True:
+            self._assert_signing_msp_key_permissions()
+            candidate = work / "offline_signed_config_update.pb"
+            try:
+                source_bytes = envelope_path.read_bytes()
+                fd = os.open(candidate, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                opened = os.fstat(fd)
+                if opened.st_mode & 0o077:
+                    os.close(fd)
+                    raise SafetyError("offline signing workspace cannot enforce private artifact mode 0600")
+                if hasattr(os, "geteuid") and opened.st_uid != os.geteuid():
+                    os.close(fd)
+                    raise SafetyError("offline signing artifact is not owned by the actuator process identity")
+                with os.fdopen(fd, "wb") as stream:
+                    stream.write(source_bytes)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            except OSError as exc:
+                raise SafetyError(f"cannot create restricted offline signing copy: {exc}") from exc
+            self._run("fabric_native_offline_signconfigtx", [
+                str(self.peer_bin), "channel", "signconfigtx", "-f", str(candidate),
+            ], work, commands)
+        elif before_sign.get("signature_count") != 1 or before_sign.get("outer_signature_present") is not True:
+            raise SafetyError("partially signed or multi-signature input is rejected; refusing to add signatures")
+
+        after_sign = run_inspection(candidate, "inspect_config_update_after_signing")
+        if (after_sign.get("valid") is not True
+                or after_sign.get("signature_count") != 1
+                or after_sign.get("outer_signature_present") is not True
+                or after_sign.get("config_update_sha256") != before_sign.get("config_update_sha256")):
+            raise SafetyError("offline signing changed ConfigUpdate bytes or produced incomplete Fabric signatures")
+
+        verify_index = len(commands)
+        self._run("fabric_native_envelope_verification", [
+            "bash", str(verifier_script), "--config-block", str(config_block_path),
+            "--envelope", str(candidate), "--channel", self.channel,
+            "--target-max-message-count", str(target.max_message_count),
+        ], work, commands)
+        try:
+            evidence = json.loads((work / f"{verify_index:02d}_fabric_native_envelope_verification.stdout").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SafetyError(f"native Fabric verifier returned incomplete evidence: {exc}") from exc
+        if evidence.get("valid") is not True or evidence.get("fabric_source_commit") != "f871cf92a026aba7b12e6f06d71ded3e6e659d71":
+            raise SafetyError("native Fabric verifier did not establish exact v2.5.16 envelope validity")
+        if evidence.get("config_update_sha256") != before_sign.get("config_update_sha256"):
+            raise SafetyError("verified ConfigUpdate bytes differ from the exact offline-signed payload")
+        raise SafetyError(
+            "offline Fabric-native signing and verification passed; live configuration submission remains disabled"
+        )
+
+    def _verify_and_reconcile(self, transition_id: str, before_block: dict, target: FabricConfig,
+                              observed_block: dict) -> dict:
+        self._require_live_verifier()
+        evidence = self.independent_verifier(self.channel, before_block, target, observed_block)  # type: ignore[misc]
+        if not isinstance(evidence, dict) or evidence.get("success") is not True:
+            raise SafetyError("independent verification did not establish the requested committed transition")
+        if evidence.get("independent") is not True or evidence.get("complete") is not True:
+            raise SafetyError("independent verifier must attest independent=true and complete=true")
+        if evidence.get("outcome") != "VERIFIED" or evidence.get("source") != "peer channel fetch config + configtxlator proto_decode":
+            raise SafetyError("independent verification provenance or outcome is invalid")
+        observed = evidence.get("observed_config")
+        if not isinstance(observed, dict) or observed != target.as_dict():
+            raise SafetyError("independent verifier's observed configuration does not equal the requested configuration")
+        if not evidence.get("transition_checks") or not all(evidence["transition_checks"].values()):
+            raise SafetyError("independent verifier lacks passing full transition checks")
+        state = self.transition_fence.read()
+        expected_doc = (state or {}).get("context", {}).get("expected_config_document")
+        if not expected_doc or evidence.get("expected_config_document") != expected_doc:
+            raise SafetyError("independent verifier's expected full config differs from the durable transition record")
+        try:
+            self.transition_fence.reconcile(
+                transition_id, observed_config=observed, expected_config=target.as_dict(),
+                evidence={**evidence, "outcome": "VERIFIED"},
+            )
+        except FenceError as exc:
+            raise SafetyError(str(exc)) from exc
+        return evidence
+
+    def reconcile_pending(self, *, explicit_not_submitted_authorization: str | None = None) -> dict:
+        """Read-only independent reconciliation; never submits or retries."""
+        if self.independent_verifier is None:
+            raise SafetyError("restart reconciliation requires the concrete independent verifier")
+        with self._exclusive_lock():
+            state = self.transition_fence.read()
+            if state is None or state["status"] not in {"PREPARED", "SUBMITTING", "UNKNOWN"}:
+                return {"resolved": False, "status": state.get("status") if state else "NO_TRANSITION",
+                        "reason": "no unresolved transition"}
+            if state["status"] == "PREPARED":
+                # The durable ordering guarantees the external submitter is not
+                # invoked until SUBMITTING has been fsynced.
+                self.transition_fence.mark_not_submitted(state["transition_id"],
+                                                          "restart found durable PREPARED before submission-attempt marker")
+                return {"resolved": True, "status": "NOT_SUBMITTED", "source": "durable lifecycle ordering"}
+            context = state.get("context", {})
+            before_block = context.get("before_block")
+            if not isinstance(before_block, dict):
+                return {"resolved": False, "status": state["status"],
+                        "reason": "journal lacks exact pre-state block; remains fenced"}
+            target = coerce_config(state["intended_config"])
+            try:
+                evidence = self.independent_verifier(self.channel, before_block, target, None)
+            except Exception as exc:
+                observation = {"independent": False, "complete": False,
+                               "failure_category": getattr(exc, "category", "verifier_error"),
+                               "error": f"{type(exc).__name__}: {exc}", "observed_at_utc": utc_now()}
+                self.transition_fence.record_unresolved_observation(state["transition_id"], observation)
+                return {"resolved": False, "status": state["status"], "classification": "VERIFIER_FAILURE",
+                        "reason": observation["error"], "evidence": observation}
+            if evidence.get("outcome") == "VERIFIED" and evidence.get("success") is True:
+                if (evidence.get("independent") is not True or evidence.get("complete") is not True
+                        or evidence.get("source") != "peer channel fetch config + configtxlator proto_decode"
+                        or evidence.get("observed_config") != target.as_dict()
+                        or evidence.get("expected_config_document") != context.get("expected_config_document")
+                        or not evidence.get("transition_checks")
+                        or not all(evidence["transition_checks"].values())):
+                    self.transition_fence.record_unresolved_observation(state["transition_id"], evidence)
+                    return {"resolved": False, "status": state["status"],
+                            "reason": "independent verification evidence is incomplete or differs from durable journal"}
+                self.transition_fence.reconcile(state["transition_id"],
+                    observed_config=evidence["observed_config"], expected_config=target.as_dict(), evidence=evidence)
+                return {"resolved": True, "status": "VERIFIED", "evidence": evidence}
+            if evidence.get("outcome") == "PRE_STATE":
+                if (evidence.get("independent") is not True or evidence.get("complete") is not True
+                        or evidence.get("observed_config") != context.get("pre_config")
+                        or evidence.get("expected_config_document") != context.get("expected_config_document")):
+                    self.transition_fence.record_unresolved_observation(state["transition_id"], evidence)
+                    return {"resolved": False, "status": state["status"],
+                            "reason": "pre-state reconciliation evidence does not match the exact durable pre-state"}
+                if explicit_not_submitted_authorization is None:
+                    self.transition_fence.record_unresolved_observation(state["transition_id"], evidence)
+                    return {"resolved": False, "status": state["status"], "classification": "PRE_STATE",
+                            "reason": "exact pre-state observed; explicit safe-resolution authorization required",
+                            "evidence": evidence}
+                safe_evidence = {**evidence, "outcome": "NOT_SUBMITTED", "safe_to_retry": True,
+                                 "resolution_basis": "operator attested no pending update remains at the orderer"}
+                self.transition_fence.resolve_not_submitted(state["transition_id"],
+                    observed_config=evidence["observed_config"], evidence=safe_evidence,
+                    explicit_authorization=explicit_not_submitted_authorization)
+                return {"resolved": True, "status": "NOT_SUBMITTED", "evidence": safe_evidence}
+            self.transition_fence.record_unresolved_observation(state["transition_id"], evidence)
+            return {"resolved": False, "status": state["status"],
+                    "classification": evidence.get("outcome", "VERIFIER_FAILURE"),
+                    "reason": evidence.get("error", "independent evidence is inconclusive"),
+                    "evidence": evidence}
+
+    def _record_transition_failure(self, transition_id: str, exc: Exception) -> None:
+        try:
+            state = self.transition_fence.read()
+            if not state or state.get("transition_id") != transition_id:
+                return
+            if state["status"] == "PREPARED":
+                self.transition_fence.mark_not_submitted(transition_id, f"pre-submission failure: {type(exc).__name__}: {exc}")
+            elif state["status"] in {"SUBMITTING", "UNKNOWN"}:
+                self.transition_fence.mark_unknown(transition_id, f"submission outcome requires independent reconciliation: {type(exc).__name__}: {exc}")
+        except FenceError:
+            # Corrupt or inconsistent durable state remains fail-closed.
+            return
 
     def _new_attempt_dir(self) -> Path:
         path = self.output_dir / f"update-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}-{uuid.uuid4().hex[:8]}"
@@ -391,7 +639,7 @@ class FabricChannelConfigActuator:
         return block, active, policy
 
     def inspect_current(self) -> dict:
-        """Fetch and decode the active config without submitting anything."""
+                                                                             
         work = self._new_attempt_dir()
         commands: list[CommandRecord] = []
         block, active, policy = self._fetch_decode(work, "inspect", commands)
@@ -435,7 +683,7 @@ class FabricChannelConfigActuator:
             raise SafetyError("target MaxMessageCount equals the active value")
 
     def prepare(self, target: FabricConfig) -> dict:
-        """Construct and verify the update envelope without submitting it."""
+                                                                             
         with self._exclusive_lock():
             work = self._new_attempt_dir()
             commands: list[CommandRecord] = []
@@ -485,7 +733,7 @@ class FabricChannelConfigActuator:
     def _validate_prepared_artifact(self, prepared_dir: Path, before_block: dict,
                                     before: FabricConfig, policy: dict,
                                     target: FabricConfig, *, approved_before_b: int | None = None) -> dict:
-        """Reject stale or altered preparation artifacts before submission."""
+                                                                              
         prepared_dir = Path(prepared_dir)
         required = ["prepare_record.json", "before.json", "original_config.json",
                     "config_update.json", "config_update_in_envelope.json",
@@ -560,10 +808,10 @@ class FabricChannelConfigActuator:
         return prep
 
     def execute_prepared(self, prepared_dir: Path, target: FabricConfig, *, approved_before_b: int | None = None) -> UpdateRecord:
-        """Execute exactly one previously prepared envelope after stale checks."""
+                                                                                  
         decision_epoch = time.time()
         with self._exclusive_lock():
-            self._check_cooldown(decision_epoch)
+            self._require_live_verifier()
             work = self._new_attempt_dir()
             commands: list[CommandRecord] = []
             start_mono = time.monotonic()
@@ -580,19 +828,29 @@ class FabricChannelConfigActuator:
                     artifacts_dir=str(work), commands=[c.__dict__ for c in commands],
                     prepared_artifacts_dir=str(prepared_dir), preparation_completion_timestamp_utc=preparation_utc,
                     before_block_data_hash=block_data_hash(before_block), before_block_sha256=sha256(work / "before.pb"),
+                    before_config_document=config_from_block_document(before_block),
                 )
                 _write_new(work / "execution_preflight.json", {
                     "prepared_artifacts_dir": str(prepared_dir), "prepared_record": prepared,
                     "active_config": before.as_dict(), "policy": policy,
                     "verified_before_submission": True,
                 })
+                self.transition_fence.begin(work.name, target.as_dict(), context={
+                    "pre_config": before.as_dict(), "before_block": before_block,
+                    "before_block_number": block_number(before_block),
+                    "before_config_document": config_from_block_document(before_block),
+                    "expected_config_document": expected_batch_size_config(before_block, target.max_message_count),
+                    "attempt_artifacts_dir": str(work),
+                })
+                self._submit_config_update("submit_prepared_update",
+                                           Path(prepared_dir) / "config_update_in_envelope.pb",
+                                           work / "before.pb", target, work, commands)
+                raise SafetyError("configuration broadcast is not implemented; refusing to mark the transition submitted")
                 submit_start = utc_now()
                 submit_start_mono = time.monotonic()
                 record.submission_start_timestamp_utc = submit_start
-                self._run("submit_prepared_update", [str(self.peer_bin), "channel", "update", "-f", str(Path(prepared_dir) / "config_update_in_envelope.pb"),
-                                                      "-c", self.channel, "-o", self.orderer_address,
-                                                      "--ordererTLSHostnameOverride", self.orderer_tls_hostname,
-                                                      "--tls", "--cafile", str(self.orderer_ca)], work, commands)
+                self.transition_fence.mark_submitting(work.name)
+                self.transition_fence.mark_submission_acknowledged(work.name, {"command": "peer channel update", "exit_code": 0})
                 record.submission_completion_timestamp_utc = utc_now()
                 record.submission_timestamp_utc = record.submission_completion_timestamp_utc
                 record.submission_duration_ms = (time.monotonic() - submit_start_mono) * 1000
@@ -604,13 +862,16 @@ class FabricChannelConfigActuator:
                         if block_number(latest_block) > record.before_block_number and latest_active.max_message_count == target.max_message_count:
                             record.verification_checks = _validate_committed_transition(before_block, latest_block, target.max_message_count)
                             record.after_config = latest_active.as_dict()
+                            record.after_config_document = config_from_block_document(latest_block)
                             record.after_block_number = block_number(latest_block)
                             record.after_block_data_hash = block_data_hash(latest_block)
                             record.after_block_sha256 = sha256(work / f"{stem}.pb")
                             record.config_block_commit_timestamp_utc = block_timestamp_utc(latest_block) or utc_now()
+                            independent = self._verify_and_reconcile(work.name, before_block, target, latest_block)
                             record.active_verified_timestamp_utc = utc_now()
-                            record.independent_verification_timestamp_utc = utc_now()
-                            record.commit_latency_ms = _utc_delta_ms(record.submission_start_timestamp_utc, record.config_block_commit_timestamp_utc)
+                            record.independent_verification_timestamp_utc = independent.get("timestamp_utc") or record.active_verified_timestamp_utc
+                            record.verification_checks = {**(record.verification_checks or {}), "independent_verification": True}
+                            record.commit_latency_ms = (time.monotonic() - submit_start_mono) * 1000
                             record.total_adaptation_latency_ms = (time.monotonic() - start_mono) * 1000
                             record.success = True
                             record.commands = [c.__dict__ for c in commands]
@@ -624,6 +885,7 @@ class FabricChannelConfigActuator:
                     time.sleep(self.poll_s)
                 raise ActuatorError("prepared update was submitted but target was not observed in a later active config block before timeout")
             except Exception as exc:
+                self._record_transition_failure(work.name, exc)
                 if record is None:
                     record = UpdateRecord(work.name, self.channel, "Orderer.BatchSize.MaxMessageCount", {}, target.as_dict(), None, utc_now(), success=False, error=f"{type(exc).__name__}: {exc}", artifacts_dir=str(work), commands=[c.__dict__ for c in commands], prepared_artifacts_dir=str(prepared_dir))
                 else:
@@ -636,10 +898,10 @@ class FabricChannelConfigActuator:
                 raise ActuatorError(str(exc)) from exc
 
     def apply(self, target: FabricConfig) -> UpdateRecord:
-        """Submit one bounded update and raise unless it is commit-verified."""
+                                                                               
         decision_epoch = time.time()
         with self._exclusive_lock():
-            self._check_cooldown(decision_epoch)
+            self._require_live_verifier()
             work = self._new_attempt_dir()
             commands: list[CommandRecord] = []
             record: UpdateRecord | None = None
@@ -674,12 +936,26 @@ class FabricChannelConfigActuator:
                     decision_timestamp_utc=utc_now(), config_fetch_timestamp_utc=utc_now(),
                     update_constructed_timestamp_utc=constructed_utc, before_block_number=block_number(before_block),
                     policy=policy, artifacts_dir=str(work), commands=[c.__dict__ for c in commands],
+                    before_config_document=original,
                 )
                 _write_new(work / "update_plan.json", {"read_set": update.get("read_set"), "write_set": update.get("write_set"), "policy": policy, "signer_msp_id": self.orderer_msp_id, "signer_msp_path": str(self.orderer_admin_msp)})
-                self._run("submit_update", [str(self.peer_bin), "channel", "update", "-f", str(envelope_pb), "-c", self.channel,
-                                              "-o", self.orderer_address, "--ordererTLSHostnameOverride", self.orderer_tls_hostname,
-                                              "--tls", "--cafile", str(self.orderer_ca)], work, commands)
-                record.submission_timestamp_utc = utc_now()
+                self.transition_fence.begin(work.name, target.as_dict(), context={
+                    "pre_config": before.as_dict(), "before_block": before_block,
+                    "before_block_number": block_number(before_block),
+                    "before_config_document": config_from_block_document(before_block),
+                    "expected_config_document": expected_batch_size_config(before_block, target.max_message_count),
+                    "attempt_artifacts_dir": str(work),
+                })
+                self._submit_config_update("submit_update", envelope_pb, work / "before.pb", target, work, commands)
+                raise SafetyError("configuration broadcast is not implemented; refusing to mark the transition submitted")
+                submit_start = utc_now()
+                submit_start_mono = time.monotonic()
+                record.submission_start_timestamp_utc = submit_start
+                self.transition_fence.mark_submitting(work.name)
+                self.transition_fence.mark_submission_acknowledged(work.name, {"command": "peer channel update", "exit_code": 0})
+                record.submission_completion_timestamp_utc = utc_now()
+                record.submission_timestamp_utc = record.submission_completion_timestamp_utc
+                record.submission_duration_ms = (time.monotonic() - submit_start_mono) * 1000
                 deadline = time.monotonic() + self.commit_timeout_s
                 latest_block, latest_active, _ = before_block, before, policy
                 while time.monotonic() < deadline:
@@ -687,10 +963,15 @@ class FabricChannelConfigActuator:
                         latest_block, latest_active, _ = self._fetch_decode(work, f"after_{len(commands)}", commands)
                         if block_number(latest_block) > record.before_block_number and latest_active.max_message_count == target.max_message_count:
                             record.verification_checks = _validate_committed_transition(before_block, latest_block, target.max_message_count)
+                            independent = self._verify_and_reconcile(work.name, before_block, target, latest_block)
                             record.after_config = latest_active.as_dict()
+                            record.after_config_document = config_from_block_document(latest_block)
                             record.after_block_number = block_number(latest_block)
                             record.config_block_commit_timestamp_utc = block_timestamp_utc(latest_block) or utc_now()
                             record.active_verified_timestamp_utc = utc_now()
+                            record.independent_verification_timestamp_utc = independent.get("timestamp_utc") or record.active_verified_timestamp_utc
+                            record.verification_checks["independent_verification"] = True
+                            record.commit_latency_ms = (time.monotonic() - submit_start_mono) * 1000
                             record.total_adaptation_latency_ms = (time.monotonic() - start_mono) * 1000
                             record.success = True
                             record.commands = [c.__dict__ for c in commands]
@@ -704,6 +985,7 @@ class FabricChannelConfigActuator:
                     time.sleep(self.poll_s)
                 raise ActuatorError("configuration update was submitted but target was not observed in a later active config block before timeout")
             except Exception as exc:
+                self._record_transition_failure(work.name, exc)
                 if record is None:
                     record = UpdateRecord(work.name, self.channel, "Orderer.BatchSize.MaxMessageCount", {}, target.as_dict(), None, utc_now(), success=False, error=f"{type(exc).__name__}: {exc}", artifacts_dir=str(work), commands=[c.__dict__ for c in commands])
                 else:
@@ -719,6 +1001,20 @@ class FabricChannelConfigActuator:
 def actuator_from_args(args: argparse.Namespace) -> FabricChannelConfigActuator:
     network = _load(Path(args.network))
     orderer = network["orderers"][0]
+    live_enabled = bool(getattr(args, "execute", False) and args.command in {"apply", "execute-prepared", "rollback"})
+    verifier = None
+    if live_enabled or args.command == "reconcile":
+        peer = network["peers"][0]
+        verifier = IndependentFabricConfigVerifier(
+            peer=Path(network["bin_dir"]) / "peer",
+            configtxlator=Path(network["bin_dir"]) / "configtxlator",
+            fabric_cfg=Path(network["fabric_cfg_path"]),
+            msp_id=peer["msp_id"], msp_path=Path(peer["admin_msp_dir"]),
+            peer_address=peer["address"], peer_tls_root_cert=Path(peer["tls_root_cert"]),
+            orderer=orderer["address"], orderer_tls_hostname=orderer["tls_hostname"],
+            orderer_ca=Path(network["orderer_ca"]),
+            output_dir=Path(args.out_dir) / "independent-verification",
+        )
     return FabricChannelConfigActuator(
         channel=args.channel,
         peer_bin=Path(network["bin_dir"]) / "peer",
@@ -729,6 +1025,9 @@ def actuator_from_args(args: argparse.Namespace) -> FabricChannelConfigActuator:
         orderer_ca=Path(network["orderer_ca"]),
         orderer_admin_msp=Path(args.orderer_admin_msp),
         output_dir=Path(args.out_dir),
+        fence_dir=Path(args.fence_dir) if args.fence_dir else Path(network["fabric_cfg_path"]).parent / ".e1-actuator-fence",
+        independent_verifier=verifier,
+        live_enabled=live_enabled,
         min_b=args.min_b, max_b=args.max_b, cooldown_s=args.cooldown_s,
         poll_s=args.poll_s, commit_timeout_s=args.commit_timeout_s,
     )
@@ -740,6 +1039,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--channel", required=True)
     p.add_argument("--orderer-admin-msp", required=True, type=Path)
     p.add_argument("--out-dir", required=True, type=Path)
+    p.add_argument("--fence-dir", type=Path, help="persistent shared channel-fence root; defaults beside FABRIC_CFG_PATH")
     p.add_argument("--min-b", type=int, default=DEFAULT_MIN_B)
     p.add_argument("--max-b", type=int, default=DEFAULT_MAX_B)
     p.add_argument("--cooldown-s", type=float, default=30.0)
@@ -761,7 +1061,13 @@ def build_parser() -> argparse.ArgumentParser:
     rollback = sub.add_parser("rollback")
     rollback.add_argument("--record", type=Path, required=True)
     rollback.add_argument("--approved-target", type=int)
+    rollback.add_argument("--authorize-rollback", action="store_true",
+                          help="explicitly authorize this recorded transition's rollback")
     rollback.add_argument("--execute", action="store_true")
+    reconcile = sub.add_parser("reconcile", help="independently reconcile the durable unresolved transition; never submits")
+    reconcile.add_argument("--resolve-not-submitted", action="store_true",
+                           help="explicitly resolve exact pre-state after external confirmation no update remains pending")
+    reconcile.add_argument("--confirm-safe-resolution", help="must equal RESOLVE-NOT-SUBMITTED:<transition-id>")
     return p
 
 
@@ -771,6 +1077,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "inspect":
         print(json.dumps(actuator.inspect_current(), indent=2, sort_keys=True))
         return 0
+    if args.command == "reconcile":
+        authorization = args.confirm_safe_resolution if args.resolve_not_submitted else None
+        result = actuator.reconcile_pending(explicit_not_submitted_authorization=authorization)
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0 if result.get("resolved") or result.get("status") == "NO_TRANSITION" else 2
     if args.command == "prepare":
         current = actuator.inspect_current()["active_config"]
         base = FabricConfig(**{k: current[k] for k in ("max_message_count", "batch_timeout_ms", "preferred_max_bytes", "absolute_max_bytes", "orderers")})
@@ -820,8 +1131,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.approved_target != target_b:
         raise SystemExit("refusing live rollback: --approved-target must equal the recorded previous value")
-    current = actuator.inspect_current()["active_config"]
-    target = validate_rollback_preconditions(rec, current, args.approved_target)
+    if not args.authorize_rollback:
+        raise SystemExit("refusing rollback: --authorize-rollback is required")
+    if not isinstance(actuator.independent_verifier, IndependentFabricConfigVerifier):
+        raise SystemExit("refusing rollback: independent configuration verifier is unavailable")
+    current_block, retrieval_evidence = actuator.independent_verifier.retrieve(actuator.channel)
+    if retrieval_evidence.get("channel") not in (None, actuator.channel):
+        raise SystemExit("refusing rollback: independent retrieval channel provenance mismatch")
+    authorization = f"ROLLBACK:{rec.get('channel')}:{rec.get('attempt_id')}"
+    target = validate_rollback_preconditions(rec, current_block, args.approved_target, authorization=authorization)
     print(json.dumps(actuator.apply(target).as_dict(), indent=2, sort_keys=True))
     return 0
 

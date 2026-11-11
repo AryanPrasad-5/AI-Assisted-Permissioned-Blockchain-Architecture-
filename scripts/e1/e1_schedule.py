@@ -1,8 +1,8 @@
-"""Generate a seeded E1 run order. Plans runs; starts nothing.
+                                                              
 
-Usage: python scripts/e1/e1_schedule.py --design core --out schedule.csv
-Freeze the file before run 1. Never regenerate after any run has started.
-"""
+                                                                        
+                                                                         
+   
 from __future__ import annotations
 
 import argparse
