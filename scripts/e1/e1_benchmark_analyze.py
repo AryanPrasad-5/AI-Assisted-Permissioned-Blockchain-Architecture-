@@ -1,16 +1,16 @@
-"""Analyze one or more reproducible Caliper E1 fixed-count runs.
+                                                                
 
-The analyzer consumes only recorded artifacts: the per-transaction recorder CSV,
-submit-event CSV, recorder manifest, fetched ledger table, and optional E1
-telemetry summary. It does not contact Fabric and refuses to overwrite output.
+                                                                                
+                                                                          
+                                                                              
 
-Usage:
-  python e1_benchmark_analyze.py analyze --run-id b001 --recorder-base <base>
-      --ledger-tx <ledger_tx.csv> --metrics-summary <metrics_summary.json>
-      --out-dir <new-dir>
-  python e1_benchmark_analyze.py aggregate --input <summary.json> --input <summary.json>
-      --out-dir <new-dir>
-"""
+      
+                                                                             
+                                                                          
+                         
+                                                                                        
+                         
+   
 from __future__ import annotations
 
 import argparse
@@ -25,7 +25,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from e1_reconcile import Expectations, reconcile, verdict  # noqa: E402
+from e1_reconcile import Expectations, reconcile, verdict              
 
 
 def read_csv(path: Path) -> list[dict]:
@@ -66,7 +66,7 @@ def max_backlog(records: list[dict], submits: list[dict]) -> int:
     events: list[tuple[float, int, int]] = []
     for r in records:
         if r.get("final_ms") not in (None, ""):
-            events.append((float(r["final_ms"]), 0, -1))  # finish before same-time submit
+            events.append((float(r["final_ms"]), 0, -1))                                  
     for s in submits:
         events.append((float(s["t_submit_evt_ms"]), 1, int(s["count"])))
     outstanding = peak = 0

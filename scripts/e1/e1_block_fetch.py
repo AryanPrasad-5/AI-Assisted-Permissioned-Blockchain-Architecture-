@@ -1,49 +1,49 @@
-"""Block fetch (LA-3; spec file 03 section 7 "Ledger reader"; E1 v0.2 protocol section 9 step 6).
+                                                                                                 
 
-Status: written 2026-11-09, tested with a fake peer CLI and synthetic protobuf blocks only. Never
-run against Fabric. The block-hash rules below are from Fabric v2.5 protoutil/blockutils.go as read
-during planning (BlockHeaderHash = SHA-256 of the ASN.1 DER SEQUENCE {INTEGER number, OCTET STRING
-previous_hash, OCTET STRING data_hash}; BlockDataHash = SHA-256 of the concatenated envelopes).
-E0-0 must confirm both on real blocks before INCONSISTENT verdicts from them are relied on.
+                                                                                                 
+                                                                                                   
+                                                                                                  
+                                                                                               
+                                                                                           
 
-Symbols: B = MaxMessageCount (block size in transactions), P = PreferredMaxBytes (bytes); both are
-only passed through to the cut-cause rule of e1_reconcile.infer_cut_causes.
+                                                                                                  
+                                                                           
 
-fetch   peer channel getinfo -c CH, then `peer channel fetch <n> <file> -c CH` from the first org's PEER
-        (deliver service; no -o: orderer-served blocks carry no validation codes, E0-0 check 7) for every n
-        in FIRST..LAST (default LAST = height - 1). Each attempt writes its own file, so nothing is ever
-        rewritten. Prints the plan; runs only with --execute.
-verify  the same checks on a directory of already fetched *.block files (no Fabric needed).
+                                                                                                        
+                                                                                                           
+                                                                                                        
+                                                             
+                                                                                           
 
-Inputs   --network network.json (the e1_channel_run.py description: orderers[0], orderer_ca, the
-         first peer org's admin env, optional bin_dir), --channel, --first, --last, B, P.
-Outputs  (new --out-dir; refuses an existing one)
-  blocks/<channel>_<n:06d>_a<k>.block   raw bytes of every fetch attempt (verify: not copied)
-  cmd/<label>.stdout|.stderr            CLI output of every command
-  block_fetch_records.csv               one row per requested block: canonical file, SHA-256, bytes,
-                                        attempts, decoded number, tx count, hashes, checks, status
-  block_anomalies.csv                   every problem, with file and detail
-  ledger/ledger_tx.csv, ledger/blocks.csv   e1_ledger_blocks tables, written ONLY when the range is
-                                        COMPLETE or COMPLETE_WITH_WARNINGS (input to e1_reconcile.py
-                                        --ledger-tx/--blocks and e1_log_collector.py --blocks-csv)
-  block_fetch_manifest.json             request, getinfo, provenance, counts, status, output hashes
+                                                                                                
+                                                                                         
+                                                 
+                                                                                             
+                                                                   
+                                                                                                    
+                                                                                                  
+                                                                           
+                                                                                                   
+                                                                                                    
+                                                                                                  
+                                                                                                   
 
-Checks
-  completeness  height_unknown, range_beyond_height, fetch_failed, block_file_empty,
-                block_unparseable, range_gap (verify mode: a number in FIRST..LAST has no file)
-  consistency   number_mismatch, data_hash_mismatch, chain_break, tip_hash_mismatch,
-                flags_length_mismatch, channel_mismatch, conflicting_duplicate
-  warnings      exact_duplicate, duplicate_tx_id (Fabric keeps both; the later one carries
-                DUPLICATE_TXID and the reconciler judges it), retry_succeeded, chain_anchor_unverified
-                (FIRST > 0: the first block's previous_hash cannot be checked), unexpected_file
+      
+                                                                                    
+                                                                                               
+                                                                                    
+                                                                              
+                                                                                          
+                                                                                                      
+                                                                                               
 
-Usage
-  python scripts/e1/e1_block_fetch.py fetch --network network.json --channel e1-r001 --first 0
-         --max-message-count 45 --preferred-max-bytes 10485760 --out-dir runs/r001/ledger [--last N] [--execute]
-  python scripts/e1/e1_block_fetch.py verify --blocks-dir DIR --channel e1-r001 --first 0 --last 21
-         --max-message-count 10 --preferred-max-bytes 524288 --out-dir DIR2
-Standard library only.
-"""
+     
+                                                                                              
+                                                                                                                
+                                                                                                   
+                                                                           
+                      
+   
 from __future__ import annotations
 
 import argparse
@@ -61,8 +61,8 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import e1_ledger_blocks as lb  # noqa: E402
-import e1_telemetry_common as tc  # noqa: E402
+import e1_ledger_blocks as lb              
+import e1_telemetry_common as tc              
 
 TOOL_VERSION = "e1_block_fetch 0.1 (2026-11-09)"
 COMPLETENESS = {"height_unknown", "range_beyond_height", "fetch_failed", "block_file_empty", "block_unparseable",
@@ -78,7 +78,7 @@ _GETINFO = re.compile(r"Blockchain info:\s*(\{.*\})")
 _CHANNEL = re.compile(r"^[a-z][a-z0-9.-]{0,248}$")
 
 
-# ------------------------------------------------------------------ block hashing (protoutil)
+                                                                                              
 def _der_len(n: int) -> bytes:
     if n < 0x80:
         return bytes([n])
@@ -103,7 +103,7 @@ def header_hash(number: int, previous_hash: bytes, data_hash: bytes) -> bytes:
 
 
 def block_facts(raw: bytes) -> dict:
-    """Header, data hash and parsed transactions of one block. ValueError if it does not parse."""
+                                                                                                  
     if not raw:
         raise ValueError("empty file")
     top = lb.fields(raw)
@@ -119,11 +119,11 @@ def block_facts(raw: bytes) -> dict:
             "header_hash": header_hash(number, prev, dhash), "parsed": parsed}
 
 
-# ------------------------------------------------------------------ verification core
+                                                                                      
 def verify_range(entries: dict[int, list[dict]], first: int, last: int, channel: str,
                  anomalies: tc.Anomalies, tip: dict | None = None) -> tuple[list[dict], list[dict]]:
-    """entries: requested number -> candidate files [{file, raw, attempts, fetched_utc}] in arrival order.
-    Returns (record rows, parsed blocks in number order for the ledger tables)."""
+                                                                                                          
+                                                                                  
     records, parsed_blocks, facts_by_n = [], [], {}
     for n in range(first, last + 1):
         cands = entries.get(n, [])
@@ -242,10 +242,10 @@ def _base_manifest(argv, channel, first, last, b, p) -> dict:
                                       "B_max_message_count": b, "P_preferred_max_bytes": p}}
 
 
-# ------------------------------------------------------------------ verify mode
+                                                                                
 def run_verify(blocks_dir: Path, channel: str, first: int, last: int, out_dir: Path, max_message_count: int,
                preferred_max_bytes: int, argv: list[str] | None = None) -> dict:
-    """Verify already fetched block files. Files are assigned to numbers by their decoded header."""
+                                                                                                    
     anomalies = _anoms()
     entries: dict[int, list[dict]] = {}
     for path in sorted(blocks_dir.glob("*.block")):
@@ -272,7 +272,7 @@ def run_verify(blocks_dir: Path, channel: str, first: int, last: int, out_dir: P
     return write_outputs(out_dir, records, blocks, anomalies, max_message_count, preferred_max_bytes, m)
 
 
-# ------------------------------------------------------------------ fetch mode
+                                                                               
 NetRunner = Callable[[list[str], dict], "tuple[int | None, bytes, bytes]"]
 
 
@@ -281,9 +281,9 @@ def getinfo_argv(net, channel: str) -> list[str]:
 
 
 def fetch_argv(net, channel: str, n: int, path: str) -> list[str]:
-    """From the PEER's deliver service (no -o), with the first org's peer environment. Orderer-served blocks
-    carry an empty TRANSACTIONS_FILTER (only the peer's committer writes validation codes): E0-0 check 7,
-    2026-11-09, blocks 0 and 1 of e1-e00a2 fetched both ways, identical header and data hashes."""
+                                                                                                            
+                                                                                                         
+                                                                                                  
     return [net.tool("peer"), "channel", "fetch", str(n), path, "-c", channel]
 
 
@@ -361,7 +361,7 @@ def run_fetch(net, channel: str, first: int, last: int | None, out_dir: Path, ma
     return write_outputs(out_dir, records, blocks, anomalies, max_message_count, preferred_max_bytes, m)
 
 
-# ------------------------------------------------------------------ CLI
+                                                                        
 def _net_subprocess_runner(argv: list[str], env: dict) -> tuple[int | None, bytes, bytes]:
     import os
     proc =subprocess.run(argv, env={**os.environ, **env}, capture_output=True, timeout=300, check=False)
@@ -369,7 +369,7 @@ def _net_subprocess_runner(argv: list[str], env: dict) -> tuple[int | None, byte
 
 
 def main(argv: list[str] | None = None, runner: NetRunner | None = None, platform_name: str = sys.platform) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 ledger block fetch command").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("fetch", "verify"):
         p = sub.add_parser(name)

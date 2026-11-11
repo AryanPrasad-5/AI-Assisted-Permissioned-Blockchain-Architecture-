@@ -1,4 +1,4 @@
-"""Block fetch: synthetic hash-chained blocks and a fake peer CLI. Not Fabric output; not E0 results."""
+                                                                                                        
 import csv
 import json
 import sys
@@ -9,11 +9,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "e1"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import e1_block_fetch as bf  # noqa: E402
-import e1_channel_run as cr  # noqa: E402
-import e1_log_collector as lc  # noqa: E402
-import e1_reconcile as rc  # noqa: E402
-import synthetic_fabric as sf  # noqa: E402
+import e1_block_fetch as bf              
+import e1_channel_run as cr              
+import e1_log_collector as lc              
+import e1_reconcile as rc              
+import synthetic_fabric as sf              
 
 B, P = 10, 524_288
 
@@ -41,7 +41,7 @@ def rows(path):
         return list(csv.DictReader(fh))
 
 
-# ------------------------------------------------------------------ hashing primitives
+                                                                                       
 def test_der_encoding_vectors():
     assert bf._der_uint(0) == b"\x02\x01\x00"
     assert bf._der_uint(127) == b"\x02\x01\x7f"
@@ -58,7 +58,7 @@ def test_header_hash_depends_on_every_field():
                 bf.header_hash(5, b"p" * 32, b"e" * 32)}) == 4
 
 
-# ------------------------------------------------------------------ fetch: positive
+                                                                                    
 def test_complete_range_writes_reconciler_tables(tmp_path):
     blocks = blocks_for()
     peer = sf.FakePeer(blocks)
@@ -70,7 +70,7 @@ def test_complete_range_writes_reconciler_tables(tmp_path):
     causes = [r["inferred_cut_cause"] for r in rows(tmp_path / "out" / "ledger" / "blocks.csv")]
     assert causes[1:] == ["count"] * 20 + ["timer"]
     assert m["request"]["B_max_message_count"] == B and m["request"]["P_preferred_max_bytes"] == P
-    # every command is recorded with hashes; every attempt has its own file (nothing rewritten)
+                                                                                               
     assert len(m["steps"]) == 23 and all(s["exit_code"] == 0 for s in m["steps"])
     assert len(list((tmp_path / "out" / "blocks").glob("*.block"))) == 22
     assert (tmp_path / "out" / "ledger" / "ledger_tx.csv").read_bytes().count(b"\r") == 0
@@ -79,7 +79,7 @@ def test_complete_range_writes_reconciler_tables(tmp_path):
 def test_retry_success_is_a_warning(tmp_path):
     m = fetch(tmp_path, sf.FakePeer(blocks_for(), fail={3: 2}))
     assert m["status"] == "COMPLETE_WITH_WARNINGS" and kinds(m) == {"retry_succeeded": 1}
-    assert len(list((tmp_path / "out" / "blocks").glob("e1-r001_000003_a*.block"))) == 3  # failed attempts kept
+    assert len(list((tmp_path / "out" / "blocks").glob("e1-r001_000003_a*.block"))) == 3                        
 
 
 def test_partial_range_from_first_flags_unverified_anchor(tmp_path):
@@ -87,19 +87,19 @@ def test_partial_range_from_first_flags_unverified_anchor(tmp_path):
     assert m["status"] == "COMPLETE_WITH_WARNINGS" and kinds(m) == {"chain_anchor_unverified": 1}
 
 
-# ------------------------------------------------------------------ fetch: negative
+                                                                                    
 def test_missing_block_blocks_the_ledger_tables(tmp_path):
     m = fetch(tmp_path, sf.FakePeer(blocks_for(), fail={7: -1}))
     assert m["status"] == "INCOMPLETE" and kinds(m)["fetch_failed"] == 1
     assert m["ledger_tables"]["written"] is False and not (tmp_path / "out" / "ledger").exists()
     rec = [r for r in rows(tmp_path / "out" / "block_fetch_records.csv") if r["number"] == "7"][0]
     assert rec["status"] == "missing"
-    assert (tmp_path / "out" / "blocks" / "e1-r001_000007_a3.block").exists()  # partial file kept
+    assert (tmp_path / "out" / "blocks" / "e1-r001_000007_a3.block").exists()                     
 
 
 @pytest.mark.parametrize("served,kind", [(b"\xff\xff\xff", "block_unparseable"), (b"", "fetch_failed")])
 def test_malformed_or_empty_block_is_incomplete(tmp_path, served, kind):
-    # exit 0 with an empty file counts as a failed attempt; an unparseable file reaches the decoder
+                                                                                                   
     m = fetch(tmp_path, sf.FakePeer(blocks_for(), serve={4: served}), attempts=1)
     assert m["status"] == "INCOMPLETE" and kinds(m) == {kind: 1}
     assert m["ledger_tables"]["written"] is False
@@ -118,7 +118,7 @@ def test_block_from_another_chain_breaks_the_chain(tmp_path):
     other = sf.chain(sf.ledger_groups([f"zz{i:04d}" for i in range(205)], B))
     m = fetch(tmp_path, sf.FakePeer(blocks_for(), serve={9: other[9]}))
     assert m["status"] == "INCONSISTENT"
-    # block 9 itself is self-consistent but does not link to 8, and 10 no longer links to 9
+                                                                                           
     assert kinds(m)["chain_break"] == 2
 
 
@@ -153,7 +153,7 @@ def test_duplicate_tx_id_in_ledger_is_kept_and_flagged(tmp_path):
     assert [r["validation_code"] for r in ledger if r["tx_id"] == "tx0003"] == ["0", "9"]
 
 
-# ------------------------------------------------------------------ verify mode
+                                                                                
 def write_blocks(d: Path, blocks, names=None):
     d.mkdir()
     for i, b in enumerate(blocks):
@@ -187,7 +187,7 @@ def test_verify_mode_duplicates_gaps_and_strays(tmp_path):
     assert kinds(m)["unexpected_file"] == 1
 
 
-# ------------------------------------------------------------------ CLI guards
+                                                                               
 def test_cli_refuses_existing_out_dir_and_dry_run_writes_nothing(tmp_path, capsys):
     net = tmp_path / "network.json"
     net.write_text(json.dumps(sf.network(tmp_path)), encoding="utf-8")
@@ -203,7 +203,7 @@ def test_cli_refuses_existing_out_dir_and_dry_run_writes_nothing(tmp_path, capsy
     assert bf.main(base + ["--out-dir", str(tmp_path / "run2"), "--execute"], runner=peer) == 1
 
 
-# ------------------------------------------------------------------ integration
+                                                                                
 def test_fetched_ledger_reconciles_and_feeds_the_log_collector(tmp_path):
     n = 205
     tx = ids(n)
@@ -226,7 +226,7 @@ def test_fetched_ledger_reconciles_and_feeds_the_log_collector(tmp_path):
     code = rc.main(["--run", str(base), "--ledger-tx", str(led / "ledger_tx.csv"), "--expect",
                     str(tmp_path / "expect.json"), "--blocks", str(led / "blocks.csv")])
     assert code == 0
-    # the log collector takes blocks.csv as the expected-block list and compares tx counts
+                                                                                          
     blocks_csv = rows(led / "blocks.csv")
     exp, source, ledger_tx = lc.expected_blocks([], blocks_csv, None)
     assert source == "blocks_csv" and exp == list(range(22)) and ledger_tx[21] == 5

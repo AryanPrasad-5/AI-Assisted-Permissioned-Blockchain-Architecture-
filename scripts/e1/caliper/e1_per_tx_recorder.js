@@ -1,36 +1,36 @@
 'use strict';
-/*
- * E1/E0 per-transaction recorder: a Caliper transaction observer (monitors.transaction module).
- *
- * Status: written 2026-11-09; tested only with a fake dispatch and fake TxStatus objects
- * (tests/e1/js/e1_per_tx_recorder.test.js). Not yet loaded by a real Caliper worker: E0-0
- * must confirm the interface against the pinned Caliper (v0.6.0) before any E0/E1 run.
- * Spec: D:/PLAN_BLOCK18/e1_v02_proposal_2026-11-09/03_E1_instrumentation_correction_spec_PROPOSED_2026-11-09.md
- * (sections 1, 4, 6). Replaces the v0.1 draft docs/research/e1/proposed_configs/e1_per_tx_observer.js,
- * which is kept unchanged.
- *
- * Requirements implemented (spec section 4):
- *   R1  duck typing: activate / deactivate / txSubmitted / txFinished, no caliper-core import (fixes O-1, O-2, O-3, O-11)
- *   R2  construction fails loudly if outputDir is not absolute or not writable (O-8, O-10)
- *   R3  never throws after construction (O-8, O-9: a throw would skip the internal observer's cleanup)
- *   R4  one CSV + one submits CSV + one manifest per (worker, round); temp file then rename;
- *       never overwrites an existing file (O-6)
- *   R5  per tx: tx_id, seq_finish, create_ms, final_ms, status, verified, err, obs_hr_ns, worker, round, label (O-4, O-5, O-14)
- *   R6  per submit event: seq_submit, t_submit_evt_ms, count (O-7)
- *   R7  hot path = counter increments and array pushes only (O-12)
- *   R8  manifest: counts incl. pending_at_deactivate, clock anchors, event-loop delay, versions,
- *       config in force, options hash, host, file SHA-256 (O-13, O-15, O-16)
- *   R9  config in force read from the Caliper config singleton global.caliper.config.get(key)
- *       (method name to be confirmed in E0-0; recorded as UNAVAILABLE if absent)
- *   R10 txFinished accepts a single TxStatus or an array
- *
- * Benchmark config:
- *   monitors:
- *     transaction:
- *       - module: ./e1_per_tx_recorder.js        # resolved against the Caliper workspace
- *         options: { runId: <RUN_ID>, outputDir: <absolute path>, binding: 'fabric:2.5',
- *                    eventSemantics: 'gateway_peer_commit_status', caliperVersion: '0.6.0' }
- */
+  
+                                                                                                
+  
+                                                                                         
+                                                                                          
+                                                                                       
+                                                                                                                
+                                                                                                       
+                           
+  
+                                             
+                                                                                                                          
+                                                                                           
+                                                                                                       
+                                                                                             
+                                                
+                                                                                                                                
+                                                                   
+                                                                   
+                                                                                                 
+                                                                             
+                                                                                              
+                                                                                 
+                                                         
+  
+                    
+              
+                   
+                                                                                          
+                                                                                         
+                                                                                             
+   
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');

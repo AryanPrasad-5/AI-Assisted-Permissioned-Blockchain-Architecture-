@@ -1,4 +1,4 @@
-"""LA-2 renderer and configuration files, checked with the repo's own validators. Synthetic POSIX paths only."""
+                                                                                                                
 import json
 import re
 import sys
@@ -9,10 +9,10 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "scripts" / "e1"))
 
-import e1_channel_run as cr  # noqa: E402
-import e1_la2_render as lr  # noqa: E402
-import e1_run_orchestrator as ro  # noqa: E402
-import e1_telemetry_common as tc  # noqa: E402
+import e1_channel_run as cr              
+import e1_la2_render as lr              
+import e1_run_orchestrator as ro              
+import e1_telemetry_common as tc              
 
 TN = "/home/aryan/fabric/fabric-samples/test-network"
 ENV = {"test_network": TN, "fabric_bin": "/home/aryan/fabric/bin", "fabric_cfg": "/home/aryan/fabric/fabric-samples/config",
@@ -77,7 +77,7 @@ def test_compose_overlay_ports_images_and_services():
         assert f"ORDERER_GENERAL_LISTENPORT={port}" in t and f"ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:{admin}" in t
         assert f"ORDERER_OPERATIONS_LISTENADDRESS={name}:{ops}" in t
         assert f"orderers/{name}/tls/:/var/hyperledger/orderer/tls" in t
-    # the consenter ports in configtx equal the orderers' listen ports in compose
+                                                                                 
     ctx = CONFIGTX.read_text(encoding="utf-8")
     for name, port, _, _ in lr.ORDERERS:
         assert re.search(rf"- Host: {re.escape(name)}\n\s+Port: {port}\n", ctx)
@@ -99,7 +99,7 @@ def test_run_render_plan_and_caliper_files(tmp_path):
     rec = bench["monitors"]["transaction"][0]["options"]
     assert rec["outputDir"] == cal["recorder_dir_in_container"] and rec["runId"] == "r001"
     assert cal["recorder_dir"] == f"{ENV['caliper_workspace']}/runs/r001/recorder"
-    # recorder base the orchestrator will read = what the recorder writes (runId_w0_r1_label)
+                                                                                             
     assert plan.recorder_base("measured_round", "measured_label").name == "r001_w0_r1_m-r001"
     netcfg = json.loads((r["dir"] / "networkconfig.yaml").read_text())
     assert netcfg["channels"][0]["channelName"] == plan.raw["channel"] == "e1-r001"
@@ -165,8 +165,8 @@ def test_commands_print_only(tmp_path, capsys):
 
 
 def test_fabric_cli_tools_refuse_real_execution_off_linux(tmp_path, capsys):
-    """channel run, block fetch and chaincode deploy pass POSIX paths to Linux binaries: --execute without an
-    injected runner is refused outside the Ubuntu WSL distro, before anything is created."""
+                                                                                                             
+                                                                                            
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import e1_block_fetch as bf
     import e1_chaincode_deploy as cd
@@ -195,12 +195,12 @@ def test_bootstrap_network_is_for_chaincode_deploy_only(tmp_path):
         lr.network(ENV, PKG, bootstrap=True)
     with pytest.raises(ValueError):
         lr.network(ENV, None)
-    # the channel tool refuses it before creating anything
+                                                          
     local = {**sf.network(tmp_path), "bootstrap": True}
     with pytest.raises(cr.RequestError, match="bootstrap"):
         cr.run(cr.Request("e1-r001", "r001", 10, "2s", 524288), cr.Network(local), tmp_path / "run", lambda a, e: (0, b"", b""))
     assert not (tmp_path / "run").exists()
-    # and so does the orchestrator plan
+                                       
     netf = tmp_path / "boot.json"
     netf.write_text(json.dumps(local), encoding="utf-8")
     plan = lr.run_plan(ENV, str(netf), "r001", "e1-r001", {"B": 10, "tau": "2s", "P": 524288, "n": 1}, 0, True)

@@ -1,12 +1,12 @@
 'use strict';
-/*
- * E1/E0 workload core (LA-2): deterministic request generation, no Caliper dependency, unit-tested offline.
- * Protocol: E1 v0.2 section 10 (fixed-width unique keys <runId>_<round>_<seq:07d>, fixed 128-byte ASCII
- * value, one request per transaction, no randomness) and E0 section E0-2 (every 25th transaction calls
- * FailAlways(); ReadModifyWrite("hot") for MVCC conflicts). Both PROPOSED.
- * Limits match the chaincode (fabric-testbed/chaincode/e1asset/core/validate.go): keys [A-Za-z0-9._-],
- * 1..128 bytes; values printable ASCII, 1..4096 bytes.
- */
+  
+                                                                                                            
+                                                                                                        
+                                                                                                       
+                                                                           
+                                                                                                       
+                                                       
+   
 const KEY_RE = /^[A-Za-z0-9._-]+$/;
 const MAX_KEY = 128;
 const MAX_VALUE = 4096;
@@ -42,7 +42,7 @@ function keyFor(runId, roundIndex, seq) {
 
 function valueOf(bytes) { return 'v'.repeat(bytes); }
 
-/** The single Caliper request for transaction number seq (0-based) of a round. */
+                                                                                  
 function requestFor(a, roundIndex, seq) {
     const base = { contractId: a.contractId, invokerIdentity: a.invokerIdentity, readOnly: false };
     if (a.mode === 'rmw') {

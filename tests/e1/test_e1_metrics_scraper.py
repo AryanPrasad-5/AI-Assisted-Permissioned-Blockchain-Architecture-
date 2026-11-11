@@ -1,4 +1,4 @@
-"""Metrics scraper: synthetic Prometheus text and a fake HTTP fetcher with a fake clock. Not Fabric output."""
+                                                                                                              
 import json
 import sys
 from pathlib import Path
@@ -8,16 +8,16 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "e1"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import e1_metrics_scraper as ms  # noqa: E402
-import synthetic_fabric as sf  # noqa: E402
+import e1_metrics_scraper as ms              
+import synthetic_fabric as sf              
 
 TARGETS = [{"name": "orderer1", "role": "orderer", "url": "http://o1:9443/metrics"},
            {"name": "peer0org1", "role": "peer", "url": "http://p1:9444/metrics"}]
 
 
 class FakeFetch:
-    """Serves synthetic metrics; k advances once per orderer scrape. overrides[(url, call)] = (status, body) or an
-    exception instance; latency_ms is added to the fake clock per call."""
+                                                                                                                  
+                                                                          
 
     def __init__(self, clock, overrides=None, latency_ms=3, leader_changes=0, reset_at=None):
         self.clock, self.overrides, self.latency = clock, dict(overrides or {}), latency_ms
@@ -48,7 +48,7 @@ def kinds(m):
     return {**m["anomalies"]["error"], **m["anomalies"]["warning"]}
 
 
-# ------------------------------------------------------------------ parser
+                                                                           
 def test_parser_reads_types_labels_escapes_and_special_values():
     text = ('# HELP h synthetic\n# TYPE h histogram\nh_bucket{le="+Inf",channel="c"} 3\nh_sum{channel="c"} 0.5\n'
             'h_count{channel="c"} 3\n# TYPE g gauge\ng{a="x\\"y",b="1\\\\2",c="l\\nm"} NaN\nu -Inf\nv 1e-3 1700\n')
@@ -76,7 +76,7 @@ def test_parser_flags_duplicates_and_type_conflicts():
     assert sorted(p[0] for p in problems) == ["duplicate_series", "type_conflict"]
 
 
-# ------------------------------------------------------------------ scrape phases
+                                                                                  
 def test_before_during_after_and_summary(tmp_path):
     clock = sf.Clock()
     f = FakeFetch(clock)
@@ -87,7 +87,7 @@ def test_before_during_after_and_summary(tmp_path):
     assert md["rounds"] == 5 and md["missed_round_slots"] == 0
     rows = ms.tc.read_csv(tmp_path / "during" / "scrapes.csv")
     t0 = [int(r["t0_mono_ns"]) for r in rows if r["target"] == "orderer1"]
-    assert [b - a for a, b in zip(t0, t0[1:])] == [1_000_000_000] * 4          # paced on the monotonic clock
+    assert [b - a for a, b in zip(t0, t0[1:])] == [1_000_000_000] * 4                                        
     assert all((tmp_path / "during" / r["raw_file"]).exists() for r in rows)
     s = ms.summarize(tmp_path / "before", tmp_path / "after", tmp_path / "sum", during=tmp_path / "during",
                      channel=sf.CHANNEL)
@@ -107,12 +107,12 @@ def test_fresh_channel_absent_before_counts_as_zero_only_when_declared(tmp_path)
     s1 = ms.summarize(tmp_path / "before", tmp_path / "after", tmp_path / "s1", channel=sf.CHANNEL)
     assert s1["status"] == "INCOMPLETE" and "delta_unavailable" in kinds(s1)
     s2 = ms.summarize(tmp_path / "before", tmp_path / "after", tmp_path / "s2", channel=sf.CHANNEL, fresh_channel=True)
-    assert s2["status"] == "COMPLETE_WITH_WARNINGS"     # carries the before-phase warning forward
+    assert s2["status"] == "COMPLETE_WITH_WARNINGS"                                               
     rows = ms.tc.read_csv(tmp_path / "s2" / "metric_deltas.csv")
     assert {r["before_source"] for r in rows} == {"assumed_zero"} and s2["derived"]["orderer1"]["leader_changes_delta"] == 0
 
 
-# ------------------------------------------------------------------ negative tests
+                                                                                   
 def test_connection_errors_http_errors_and_malformed_bodies(tmp_path):
     clock = sf.Clock()
     f = FakeFetch(clock, overrides={("http://o1:9443/metrics", 1): ConnectionRefusedError("refused"),
@@ -124,7 +124,7 @@ def test_connection_errors_http_errors_and_malformed_bodies(tmp_path):
     assert m["status"] == "INCOMPLETE"
     assert k["scrape_failed"] == 1 and k["http_status"] == 1 and k["decode_error"] == 1 and k["malformed_line"] == 1
     rows = ms.tc.read_csv(tmp_path / "during" / "scrapes.csv")
-    assert len(rows) == 8                                     # every attempt has a row, failed ones included
+    assert len(rows) == 8                                                                                    
     assert (tmp_path / "during" / "raw" / "during_000002_peer0org1.prom").read_bytes() == b"busy"
     bad = [a for a in ms.tc.read_csv(tmp_path / "during" / "metrics_anomalies.csv") if a["kind"] == "malformed_line"]
     assert bad[0]["raw"] == "ledger_blockchain_height{ 3" and bad[0]["source"].endswith(".prom:1")
@@ -144,7 +144,7 @@ def test_duplicate_series_and_counter_reset_are_inconsistent(tmp_path):
     m = scrape(tmp_path, "before", f, clock)
     assert m["status"] == "INCONSISTENT" and kinds(m) == {"duplicate_series": 1}
     rows = ms.tc.read_csv(tmp_path / "before" / "samples.csv")
-    assert sum(r["duplicate"] == "true" for r in rows) == 1    # kept and labelled, not dropped
+    assert sum(r["duplicate"] == "true" for r in rows) == 1                                    
     clock2 = sf.Clock()
     m2 = scrape(tmp_path, "during", FakeFetch(clock2, reset_at=3), clock2, name="d2", max_rounds=5)
     assert m2["status"] == "INCONSISTENT" and kinds(m2)["counter_reset"] >= 1
@@ -152,7 +152,7 @@ def test_duplicate_series_and_counter_reset_are_inconsistent(tmp_path):
 
 def test_overrun_is_counted_never_backfilled_and_clock_step_detected(tmp_path):
     clock = sf.Clock()
-    # each round takes 2.6 s (2 targets x 1.3 s): rounds start at slots 0, 2 and 5; slots 1, 3, 4 and 6 pass unscraped
+                                                                                                                      
     m = scrape(tmp_path, "during", FakeFetch(clock, latency_ms=1300), clock, max_rounds=3)
     assert kinds(m)["interval_overrun"] == 3 and m["missed_round_slots"] == 4 and m["rounds"] == 3
     assert [int(r["round"]) for r in ms.tc.read_csv(tmp_path / "during" / "scrapes.csv")][::2] == [0, 2, 5]
@@ -161,7 +161,7 @@ def test_overrun_is_counted_never_backfilled_and_clock_step_detected(tmp_path):
     class Jumpy(FakeFetch):
         def __call__(self, url, timeout):
             out = super().__call__(url, timeout)
-            self.clock.jump(5_000_000)  # wall clock steps 5 ms forward, monotonic does not
+            self.clock.jump(5_000_000)                                                     
             return out
     clock2 = sf.Clock()
     m2 = scrape(tmp_path, "after", Jumpy(clock2), clock2, name="a2")
@@ -195,7 +195,7 @@ def test_cli_guards(tmp_path, capsys):
                     "--execute"]) == 2
     assert ms.main(["scrape", *t, *t, "--phase", "after", "--out-dir", str(tmp_path / "y"), "--execute"]) == 2
     assert ms.main(["scrape", *t, "--phase", "during", "--out-dir", str(tmp_path / "z"), "--execute"],
-                   fetch=lambda u, s: (200, b"")) == 2       # during without a stop condition
+                   fetch=lambda u, s: (200, b"")) == 2                                        
     (tmp_path / "exists").mkdir()
     assert ms.main(["scrape", *t, "--phase", "after", "--out-dir", str(tmp_path / "exists"), "--execute"]) == 2
     code = ms.main(["scrape", *t, "--phase", "after", "--out-dir", str(tmp_path / "ok"), "--execute"],

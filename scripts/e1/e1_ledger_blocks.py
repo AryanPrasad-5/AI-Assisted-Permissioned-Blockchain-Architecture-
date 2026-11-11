@@ -1,23 +1,23 @@
-"""Ledger reader core: raw Fabric block files -> ledger_tx.csv and blocks.csv (spec file 03 section 7).
+                                                                                                       
 
-Status: written 2026-11-09, tested on synthetic protobuf blocks only. Must be validated on real
-blocks in E-a/E0-0 (a block fetched with `peer channel fetch <n> <file>` from the pinned v2.5.16
-network) before E0-1 relies on it.
+                                                                                               
+                                                                                                
+                                  
 
-No fabric-protos dependency: a minimal protobuf wire-format decoder reads only the fields needed.
-Field numbers are those of fabric-protos common/common.proto (Block, BlockHeader, BlockData,
-BlockMetadata, Envelope, Payload, Header, ChannelHeader) and google/protobuf/timestamp.proto.
-  env_bytes   = len(Envelope.payload) + len(Envelope.signature), the blockcutter's own size measure
-                (Fabric v2.5 orderer/common/blockcutter/blockcutter.go messageSizeBytes)
-  validation  = byte i of BlockMetadata.metadata[2] (TRANSACTIONS_FILTER) for transaction i
-  cut cause   = e1_reconcile.infer_cut_causes (E1 v0.2 protocol section 12.6 rule)
+                                                                                                 
+                                                                                            
+                                                                                             
+                                                                                                   
+                                                                                        
+                                                                                           
+                                                                                  
 
-Usage:
-  python scripts/e1/e1_ledger_blocks.py --blocks-dir <dir of *.block> --out-dir <new dir>
-         --max-message-count B --preferred-max-bytes P [--summary]
-Writes ledger_tx.csv and blocks.csv into --out-dir (refuses to overwrite). --summary also prints
-the transaction-size distribution and the E0-1 stop rule (45 * x_max > 10 MiB).
-"""
+      
+                                                                                         
+                                                                  
+                                                                                                
+                                                                               
+   
 from __future__ import annotations
 
 import argparse
@@ -28,16 +28,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from e1_reconcile import infer_cut_causes  # noqa: E402
+from e1_reconcile import infer_cut_causes              
 
-TRANSACTIONS_FILTER = 2  # common.BlockMetadataIndex
+TRANSACTIONS_FILTER = 2                             
 HEADER_TYPES = {0: "MESSAGE", 1: "CONFIG", 2: "CONFIG_UPDATE", 3: "ENDORSER_TRANSACTION",
                 4: "ORDERER_TRANSACTION", 5: "DELIVER_SEEK_INFO", 6: "CHAINCODE_PACKAGE"}
 TEN_MIB = 10 * 1024 * 1024
 E1_MAX_B = 45
 
 
-# ------------------------------------------------------------ protobuf wire format
+                                                                                   
 def _varint(buf: bytes, pos: int) -> tuple[int, int]:
     result, shift = 0, 0
     while True:
@@ -54,7 +54,7 @@ def _varint(buf: bytes, pos: int) -> tuple[int, int]:
 
 
 def fields(buf: bytes) -> dict[int, list]:
-    """Decode one message level: field number -> list of values (int or bytes), in order."""
+                                                                                            
     out: dict[int, list] = {}
     pos = 0
     while pos < len(buf):
@@ -84,7 +84,7 @@ def _one(f: dict, num: int, default=None):
     return vals[-1] if vals else default
 
 
-# ------------------------------------------------------------ Fabric messages
+                                                                              
 def parse_block(raw: bytes) -> dict:
     block = fields(raw)
     header = fields(_one(block, 1, b""))
@@ -160,7 +160,7 @@ def _write(path: Path, rows: list[dict]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 ledger block analysis command").splitlines()[0])
     ap.add_argument("--blocks-dir", required=True, type=Path)
     ap.add_argument("--out-dir", required=True, type=Path)
     ap.add_argument("--max-message-count", required=True, type=int)

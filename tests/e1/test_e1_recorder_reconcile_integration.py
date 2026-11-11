@@ -1,10 +1,10 @@
-"""Recorder -> reconciler file contract, end to end, on a synthetic 200-transaction round.
+                                                                                          
 
-The Node recorder (scripts/e1/caliper/e1_per_tx_recorder.js) is driven by the fake Caliper dispatch
-in tests/e1/js/fake_caliper.js and writes its real output files; the Python reconciler then reads
-them with a synthetic ledger built from the recorded tx_ids (count cuts of B = 10). Synthetic only:
-this is not an E0 result. Skipped if Node is not on PATH.
-"""
+                                                                                                   
+                                                                                                 
+                                                                                                   
+                                                         
+   
 import csv
 import shutil
 import subprocess
@@ -16,7 +16,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "scripts" / "e1"))
 
-import e1_reconcile as rc  # noqa: E402
+import e1_reconcile as rc              
 
 NODE = shutil.which("node")
 

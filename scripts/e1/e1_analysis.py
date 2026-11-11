@@ -1,9 +1,9 @@
-"""E1 analysis. Tested on synthetic data only. No E1 data exists.
+                                                                 
 
-Per-transaction input columns: create_ms, final_ms, status ("success" or "failed").
-Runs table columns from summarise_run plus: run_id, mode, rate, block.
-Thresholds are the proposed values in docs/research/e1/E1_protocol.md §8.
-"""
+                                                                                   
+                                                                      
+                                                                         
+   
 from __future__ import annotations
 
 import numpy as np
@@ -24,7 +24,7 @@ SPLIT_N = 1000
 
 
 def summarise_run(tx: pd.DataFrame) -> dict:
-    """Caliper-equivalent metrics plus windowed and first-1000 metrics for one run."""
+                                                                                      
     first_create = tx.create_ms.min()
     last_create = tx.create_ms.max()
     last_finish = tx.final_ms.max()
