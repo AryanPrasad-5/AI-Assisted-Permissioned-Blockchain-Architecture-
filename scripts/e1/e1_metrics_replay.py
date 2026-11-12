@@ -1,16 +1,16 @@
-"""Metrics replay (E0-0 remediation F3a, 2026-11-09): re-evaluate stored raw scrapes offline under the
-current scraper rules. Reads a stored metrics phase directory (raw/<phase>_<round>_<target>.prom and
-metrics_manifest.json, as written by e1_metrics_scraper.py), serves each stored body to run_scrape
-through a fake fetch, and writes a new phase directory. Nothing is contacted; the stored evidence is
-only read. Optionally summarizes two replayed phases.
+                                                                                                      
+                                                                                                    
+                                                                                                  
+                                                                                                    
+                                                     
 
-  replay     --in-dir STORED_PHASE_DIR --out-dir NEW_DIR [--rule 0.1|current]
-  summarize  --before DIR --after DIR --out-dir NEW_DIR --channel CH [--fresh-channel] [--expect-traffic]
+                                                                             
+                                                                                                         
 
---rule 0.1 replays with the 0.1 expected-family table (every family required on every target), to show
-the defect; --rule current uses the defaults of the scraper in this repository.
-Standard library only.
-"""
+                                                                                                      
+                                                                               
+                      
+   
 from __future__ import annotations
 
 import argparse
@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import e1_metrics_scraper as ms  # noqa: E402
+import e1_metrics_scraper as ms              
 
 RULE_0_1 = {"orderer": ["blockcutter_block_fill_duration", "broadcast_processed_count", "consensus_etcdraft_is_leader",
                         "consensus_etcdraft_leader_changes", "consensus_etcdraft_committed_block_number"],
@@ -49,7 +49,7 @@ def replay(in_dir: Path, out_dir: Path, rule: str, argv: list[str]) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 metrics replay and summary command").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("replay")
     r.add_argument("--in-dir", required=True, type=Path)

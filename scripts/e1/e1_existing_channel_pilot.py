@@ -1,10 +1,10 @@
-"""Run one bounded Caliper arm against an already-existing E1 channel.
+                                                                      
 
-Unlike e1_run_orchestrator.py, this runner never invokes channel creation,
-genesis generation, orderer joining, peer joining, or chaincode lifecycle
-operations. It captures the active config and height before/after the finite
-Caliper workload, then fetches and analyzes only the new ledger range.
-"""
+                                                                          
+                                                                         
+                                                                            
+                                                                      
+   
 
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-import e1_benchmark_analyze as ba  # noqa: E402
-import e1_config_actuator as ca  # noqa: E402
-import e1_run_orchestrator as ro  # noqa: E402
+import e1_benchmark_analyze as ba              
+import e1_config_actuator as ca              
+import e1_run_orchestrator as ro              
 
 
 INFO_RE = re.compile(r"Blockchain info:\s*(\{.*\})")
@@ -80,7 +80,7 @@ def fetch_config(net, channel: str, env: dict[str, str], out_dir: Path, label: s
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 existing-channel pilot command").splitlines()[0])
     ap.add_argument("--plan", required=True, type=Path)
     ap.add_argument("--run-dir", required=True, type=Path)
     ap.add_argument("--execute", action="store_true")
@@ -149,8 +149,8 @@ def main(argv: list[str] | None = None) -> int:
         fetch_cmd = [sys.executable, "-B", str(HERE / "e1_block_fetch.py"), "fetch", "--network", str(args.plan.parent / "network-e1-recovery.json"),
                      "--channel", plan.request.channel, "--first", str(first), "--max-message-count", str(plan.request.max_message_count),
                      "--preferred-max-bytes", str(plan.request.preferred_max_bytes), "--out-dir", str(fetch_dir), "--execute"]
-        # Use the plan's network path for reproducibility; the fallback above is
-        # replaced when the plan stores a path rather than an inline object.
+                                                                                
+                                                                            
         network_arg = plan.raw["network"] if isinstance(plan.raw["network"], str) else None
         if network_arg:
             fetch_cmd[fetch_cmd.index(str(args.plan.parent / "network-e1-recovery.json"))] = network_arg
@@ -158,8 +158,8 @@ def main(argv: list[str] | None = None) -> int:
         commands.append(rec)
         if rec["exit_code"] != 0:
             raise RuntimeError("block fetch failed")
-        # e1_block_fetch writes and validates ledger/ledger_tx.csv and
-        # ledger/blocks.csv as part of its successful fetch output.
+                                                                      
+                                                                   
         ledger_dir = run_dir / "ledger" / "ledger"
         if not (ledger_dir / "ledger_tx.csv").is_file() or not (ledger_dir / "blocks.csv").is_file():
             raise RuntimeError("block fetch completed without ledger tables")
