@@ -109,3 +109,6 @@ fabric-testbed/telemetry/*
 !fabric-testbed/telemetry/.gitkeep
 fabric-testbed/logs/*
 !fabric-testbed/logs/.gitkeep
+
+# Vendored Go dependencies of the chaincode (regenerate with `go mod vendor`; go.mod/go.sum stay tracked)
+Fabric_Live_Testbed/network/chaincode/e1asset/vendor/

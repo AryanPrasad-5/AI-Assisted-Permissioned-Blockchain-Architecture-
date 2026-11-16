@@ -49,7 +49,7 @@ def replay(in_dir: Path, out_dir: Path, rule: str, argv: list[str]) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 metrics replay and summary command").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("replay")
     r.add_argument("--in-dir", required=True, type=Path)

@@ -1,0 +1,8 @@
+# PROPOSED, NOT RUN. Values to merge under Orderer defaults in configtx.yaml.
+Orderer:
+  OrdererType: etcdraft
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: BLOCK      # 40, 45, or 500 under Option B
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB   # fabric-samples value; record measured transaction size

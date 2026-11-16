@@ -1,0 +1,34 @@
+{
+  "original": "docs\\research\\forensics\\results_2026-11-09\\run_02_exploratory",
+  "reproduction": "docs\\research\\forensics\\results_2026-11-09\\run_05_repro_exploratory",
+  "ignored_top_level_json_keys": [
+    "started",
+    "finished",
+    "command"
+  ],
+  "missing_in_reproduction": [],
+  "extra_in_reproduction": [],
+  "files": [
+    {
+      "file": "exploratory_results.json",
+      "sha256_original": "8e5cdeff6587aa405149840ed8d019d5c18ce34df11568b01703e58d6d30a1b0",
+      "sha256_reproduction": "4a7aec6c1d02645f6f22654f882a582016b562c92557c9b7363d72deb51be5d5",
+      "mode": "json",
+      "identical": true,
+      "differences": [],
+      "n_differences": 0,
+      "max_abs_numeric_difference": null,
+      "ignored": {
+        "started": {
+          "original": "2026-11-09T02:45:14+05:30",
+          "reproduction": "2026-11-09T17:39:02+05:30"
+        },
+        "finished": {
+          "original": "2026-11-09T02:45:15+05:30",
+          "reproduction": "2026-11-09T17:39:04+05:30"
+        }
+      }
+    }
+  ],
+  "identical": true
+}

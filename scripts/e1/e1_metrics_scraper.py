@@ -577,7 +577,7 @@ def summarize(before: Path, after: Path, out_dir: Path, *, during: Path | None =
 
                                                                         
 def main(argv: list[str] | None = None, fetch: Fetch | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 Prometheus metrics scraper").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("scrape")
     s.add_argument("--target", action="append", required=True)

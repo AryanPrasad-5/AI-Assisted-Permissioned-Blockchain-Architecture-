@@ -292,7 +292,7 @@ def verdict(checks: list[Check]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 transaction reconciliation command").splitlines()[0])
     ap.add_argument("--run", required=True, type=Path, help="recorder base path (without .csv)")
     ap.add_argument("--ledger-tx", required=True, type=Path)
     ap.add_argument("--expect", required=True, type=Path)

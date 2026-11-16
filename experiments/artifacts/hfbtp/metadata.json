@@ -1,0 +1,23 @@
+{
+  "artifact_version": 1,
+  "dataset": "hfbtp",
+  "dataset_filename": "HFBTP.csv",
+  "dataset_sha256": "CE295D6451787FEFCFE2101579238CDA4BEDE8539BC302E6A482AA4E5782BD5E",
+  "rows": 24687,
+  "features": [
+    "Set Transaction Arrival Rate",
+    "Block Size",
+    "Orderers",
+    "log_set_rate",
+    "log_block_size",
+    "block_per_unit_load",
+    "set_x_orderers",
+    "block_over_orderers"
+  ],
+  "targets": [
+    "Throughput",
+    "Avg Latency"
+  ],
+  "model_name": "random_forest",
+  "sklearn_version": "1.9.1"
+}

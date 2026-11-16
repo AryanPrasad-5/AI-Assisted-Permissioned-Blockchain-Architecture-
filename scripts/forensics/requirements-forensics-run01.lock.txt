@@ -1,0 +1,19 @@
+# ADOPTED lock for the HFBTP forensic generators. Owner approval C2 (Aryan Prasad), 2026-11-09.
+# Provenance: adopted unchanged from the proposal
+#   D:\PLAN_BLOCK18\level_A_execution_2026-11-09\requirements-forensics-run01.lock.PROPOSED.txt
+#   SHA-256 91d81a470917e8ee877b62c7f101e6a51eaf54b9a0b8b94e15ddd0ee60811e6b (that file is kept as it was).
+# Only this header differs from the proposal. The five pin lines below are byte-identical to it.
+# Scope: scripts/forensics/hfbtp_allrow_forensics.py, hfbtp_forensics_exploratory.py and
+#        hfbtp_forensics_review_checks.py. They import the standard library, numpy and pandas only.
+# Interpreter: CPython 3.14.3 (tags/v3.14.3:323c59a, MSC v.1944, 64-bit AMD64), Windows-11-10.0.26200-SP0.
+# Evidence: numpy and pandas are RECORDED in run_01/manifest.json. python-dateutil, six and tzdata are
+#   pandas' runtime requirements as installed (dist-info dated 2026-10-15, before run_01); their run_01
+#   values are INFERRED, not recorded.
+# Not hash-pinned: the wheel files are not on disk, and fetching them would be a download.
+# Adopting this lock installs nothing. Check (read-only), from the repo root:
+#   .venv/Scripts/python.exe -B -I scripts/forensics/check_forensics_lock.py scripts/forensics/requirements-forensics-run01.lock.txt
+numpy==2.5.4
+pandas==3.0.6
+python-dateutil==2.9.0.post0
+six==1.17.0
+tzdata==2026.5

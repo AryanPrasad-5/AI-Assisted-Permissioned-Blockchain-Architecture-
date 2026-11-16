@@ -24,7 +24,6 @@ class TestDataContract(unittest.TestCase):
         loader = HFBTPDatasetLoader(dummy_dir)
         self.assertEqual(loader.dataset_id, "hfbtp")
 
-        # Exact HFBTP column headers.
         df = pd.DataFrame({
             "Set Transaction Arrival Rate": [10.0, 50.0, 100.0],
             "Actual Transaction Arrival Rate": [10.1, 50.2, 99.8],

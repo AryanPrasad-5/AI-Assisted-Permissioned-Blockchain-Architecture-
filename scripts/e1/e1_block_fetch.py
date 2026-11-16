@@ -369,7 +369,7 @@ def _net_subprocess_runner(argv: list[str], env: dict) -> tuple[int | None, byte
 
 
 def main(argv: list[str] | None = None, runner: NetRunner | None = None, platform_name: str = sys.platform) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 ledger block fetch command").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("fetch", "verify"):
         p = sub.add_parser(name)

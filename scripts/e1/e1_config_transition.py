@@ -36,6 +36,31 @@ def _groups(config: dict) -> tuple[dict, dict, dict]:
         raise TransitionValidationError("incomplete_evidence", f"configuration lacks the expected Orderer groups: {exc}") from exc
 
 
+def channel_id_from_block(block: dict) -> str:
+    try:
+        value = block["data"]["data"][0]["payload"]["header"]["channel_header"]["channel_id"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise TransitionValidationError("incomplete_evidence", f"configuration block has no channel identity: {exc}") from exc
+    if not isinstance(value, str) or not value:
+        raise TransitionValidationError("incomplete_evidence", "configuration block channel identity is empty")
+    return value
+
+
+def expected_batch_size_config(before_block: dict, target_max_message_count: int) -> dict:
+    """Derive the full config expected after exactly one approved B change."""
+    before = copy.deepcopy(_config(before_block))
+    try:
+        group, orderer, values = _groups(before)
+        sequence = before.get("sequence", 0)
+        before["sequence"] = str(int(sequence) + 1) if isinstance(sequence, str) else int(sequence) + 1
+        version = values["BatchSize"]["version"]
+        values["BatchSize"]["version"] = str(int(version) + 1) if isinstance(version, str) else int(version) + 1
+        values["BatchSize"]["value"]["max_message_count"] = int(target_max_message_count)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise TransitionValidationError("incomplete_evidence", f"cannot derive expected post-transition config: {exc}") from exc
+    return before
+
+
 def _normalise_expected_change(before: dict, after: dict) -> tuple[dict, dict]:
                                                                              
     before_norm = copy.deepcopy(before)

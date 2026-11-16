@@ -246,7 +246,7 @@ def commands(env: dict) -> list[str]:
 
                                                                         
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 benchmark rendering command").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     nw = sub.add_parser("network")
     nw.add_argument("--env", required=True, type=Path)

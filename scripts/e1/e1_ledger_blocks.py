@@ -160,7 +160,7 @@ def _write(path: Path, rows: list[dict]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 ledger block analysis command").splitlines()[0])
     ap.add_argument("--blocks-dir", required=True, type=Path)
     ap.add_argument("--out-dir", required=True, type=Path)
     ap.add_argument("--max-message-count", required=True, type=int)

@@ -641,7 +641,7 @@ def _range(text: str) -> tuple[int, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 orderer and peer log collector").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     cap = sub.add_parser("capture")
     cap.add_argument("--container", action="append", required=True)

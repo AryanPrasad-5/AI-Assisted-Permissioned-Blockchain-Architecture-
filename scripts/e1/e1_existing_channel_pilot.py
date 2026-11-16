@@ -80,7 +80,7 @@ def fetch_config(net, channel: str, env: dict[str, str], out_dir: Path, label: s
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "E1 existing-channel pilot command").splitlines()[0])
     ap.add_argument("--plan", required=True, type=Path)
     ap.add_argument("--run-dir", required=True, type=Path)
     ap.add_argument("--execute", action="store_true")
