@@ -1,0 +1,29 @@
+{
+  "description": "Read-only replay input pins; no approval or execution authority. Model hashes match ARCHIVE_20261114T113430Z/SHA256SUMS.txt entries 218-220.",
+  "files": {
+    "snapshots": {
+      "path": "experiments/results/e1/synchronized_shadow_replay/shadow-replay-cfg001-20261111-005/controller_snapshots.jsonl",
+      "sha256": "179168EA0B954E8821042F307776339E12A00A0E256FE2187D7057CB42F57E65"
+    },
+    "series": {
+      "path": "data/processed/flashbots/series_2026-09-21_1s.csv.gz",
+      "sha256": "2D54EDD894DD7CCDA67D9DF81DE1A753D7B4CEF4B6DA0271F5FD418D2A98FFB6"
+    },
+    "selection": {
+      "path": "experiments/results/flashbots_horizon_benchmark_v2/select/selection_frozen.json",
+      "sha256": "888E4A48B59A5C543D9016878A5194266DE47EEAABDF0F33F51B10F146F05A72"
+    },
+    "model_metadata": {
+      "path": "experiments/artifacts/hfbtp/metadata.json",
+      "sha256": "E2928CB80F3D5D7D143FCD622FA0500A2C95305ED5A6D90970EE25A0165AE94D"
+    },
+    "throughput_model": {
+      "path": "experiments/artifacts/hfbtp/throughput.joblib",
+      "sha256": "B0ED880FFDC1AC641E0A9F9BAFE8D403D92B9C81A2193AF5EA3F87204DF1B660"
+    },
+    "latency_model": {
+      "path": "experiments/artifacts/hfbtp/avg_latency.joblib",
+      "sha256": "1E7746A293FF95F1D95203D39A602DA8BE5395A19ABA26F9AD655C8AE165E610"
+    }
+  }
+}
