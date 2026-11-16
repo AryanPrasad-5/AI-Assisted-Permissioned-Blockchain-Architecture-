@@ -15,6 +15,7 @@ from typing import Any, Dict, Mapping
 import joblib
 import pandas as pd
 import sklearn
+from sklearn.ensemble import RandomForestRegressor
 
 from fabric_perf.data.hfbtp import HFBTPDatasetLoader
 from fabric_perf.models.baseline import (
@@ -77,9 +78,22 @@ def load_hfbtp_artifact(artifact_dir: Path, target: str):
     metadata = json.loads((artifact_dir / "metadata.json").read_text(encoding="utf-8"))
     if metadata.get("artifact_version") != ARTIFACT_VERSION:
         raise ValueError("Unsupported HFBTP artifact version")
+    if metadata.get("features") != FEATURE_COLUMNS or metadata.get("targets") != TARGETS:
+        raise ValueError("Artifact feature/target schema does not match this package")
+    if metadata.get("dataset") != "hfbtp" or metadata.get("dataset_sha256") != "CE295D6451787FEFCFE2101579238CDA4BEDE8539BC302E6A482AA4E5782BD5E":
+        raise ValueError("Artifact dataset identity does not match verified HFBTP")
+    if metadata.get("sklearn_version") != sklearn.__version__:
+        raise ValueError("Artifact sklearn version differs from installed sklearn; inference refused")
     if target not in TARGETS:
         raise ValueError(f"Unknown target {target!r}; expected one of {TARGETS}")
-    return joblib.load(artifact_dir / f"{target.lower().replace(' ', '_')}.joblib"), metadata
+    estimator = joblib.load(artifact_dir / f"{target.lower().replace(' ', '_')}.joblib")
+    if list(getattr(estimator, "feature_names_in_", ())) != FEATURE_COLUMNS:
+        raise ValueError("Estimator feature ordering differs from artifact schema")
+    if metadata.get("model_name") == "random_forest":
+        model = getattr(estimator, "named_steps", {}).get("model", estimator)
+        if not isinstance(model, RandomForestRegressor) or model.n_features_in_ != len(FEATURE_COLUMNS) or model.n_outputs_ != 1:
+            raise ValueError("Artifact does not contain the declared single-target HFBTP random forest")
+    return estimator, metadata
 
 
 def predict_hfbtp(artifact_dir: Path, frame: pd.DataFrame) -> pd.DataFrame:
