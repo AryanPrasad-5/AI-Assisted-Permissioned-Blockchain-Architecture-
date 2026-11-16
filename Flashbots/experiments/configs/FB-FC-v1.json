@@ -1,0 +1,47 @@
+{
+  "experiment_id": "FB-FC-v1",
+  "title": "Offline multi-horizon forecasting of public-mempool workload (Flashbots Mempool Dumpster)",
+  "status_note": "Extends the frozen P2 benchmark (experiments/results/flashbots_horizon_benchmark_v2) with more horizons, a gas target, a learned linear baseline and more metrics. 2026-10-12 was already opened once by P2 at H = 10 s and 60 s; FB-FC-v1 results on that day are therefore a second look, not an untouched test.",
+  "dataset": {
+    "manifest": "data/manifests/flashbots_mempool_manifest.yaml",
+    "series": "Flashbots/time_series/target_series_<date>_1s.csv.gz",
+    "dates_never_joined": true
+  },
+  "targets": {
+    "arrival_rate": {"column": "arrival_count", "unit": "tx/s", "role": "PRIMARY"},
+    "gas_demand_rate": {"column": "gas_limit_sum", "unit": "gas/s", "report_scale": 1000000, "report_unit": "Mgas/s", "role": "SECONDARY"}
+  },
+  "target_definition": "y(t) = mean of the 1-s series over [t, t+H); forecast issued at origin t from series[0:t] only (lead 0).",
+  "horizons_s": [1, 10, 60, 300],
+  "origin_spacing": "every H seconds (non-overlapping targets)",
+  "pools": {
+    "D": {"date": "2026-09-21", "first_origin_s": 900, "end_s": 43200, "use": "fit: EWMA alpha, ridge coefficients and lambda, regime cut-offs"},
+    "V": {"date": "2026-09-21", "first_origin_s": 43200, "end_s": 86400, "use": "model selection only"},
+    "F": {"date": "2026-10-12", "first_origin_s": 900, "end_s": 86400, "use": "scored once after the selection is frozen"}
+  },
+  "min_history_s": 900,
+  "models": {
+    "persistence_interval": "naive / persistence: mean of the last H seconds (= last value at H = 1 s). REFERENCE for skill.",
+    "seasonal_naive_12": "mean of [t-12, t-12+H): same phase one Ethereum slot (12 s) earlier; only when H < 12",
+    "seasonal_naive_60": "mean of [t-60, t-60+H); only when H < 60",
+    "seasonal_naive_300": "mean of [t-300, t-300+H); only when H < 300",
+    "rolling_mean_60": "mean of the last 60 s; omitted when 60 = H (identical to persistence)",
+    "rolling_mean_300": "mean of the last 300 s; omitted when 300 = H",
+    "rolling_mean_900": "mean of the last 900 s",
+    "expanding_mean": "mean of everything since 00:00 UTC of the same day",
+    "ewma": "exponentially weighted mean of the 1-s series, alpha tuned on D",
+    "ridge_ar": "ridge regression on trailing means over 1, 5, 10, 30, 60, 300, 900 s (+ seasonal_naive_12 when H < 12), standardised; fit on D, lambda by 5-fold expanding time-series CV inside D",
+    "tod_profile_0921": "EXPLORATORY, F only: the 2026-09-21 value of the target at the same UTC time of day. Not selectable (it cannot be scored on V without reading V's future)."
+  },
+  "simplicity_order": ["persistence_interval", "seasonal_naive_12", "seasonal_naive_60", "seasonal_naive_300", "rolling_mean_60",
+                       "rolling_mean_300", "rolling_mean_900", "expanding_mean", "ewma", "ridge_ar"],
+  "ewma_alpha_grid": [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5],
+  "ridge": {"windows_s": [1, 5, 10, 30, 60, 300, 900], "lambda_grid": [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0], "cv_folds": 5, "clip_at_zero": true},
+  "selection_rule": "lowest V MAE; models within 1% of the best are tied and the earliest in simplicity_order wins",
+  "near_tie": 0.01,
+  "regimes": "terciles of the trailing 300-s mean arrival rate at the origin, cut-offs fitted on D origins (H = 60 s grid), applied to every pool and both targets",
+  "significance": "Diebold-Mariano (absolute-error loss, Bartlett HAC, HLN correction) selected vs persistence_interval per target x horizon; Holm across the 8 comparisons",
+  "metrics": ["mae", "rmse", "bias", "wape_pct", "smape_pct", "mape_pct_y_gt_0", "skill_mae_vs_persistence"],
+  "random_seed": 20261116,
+  "random_seed_note": "No stochastic step: every model is deterministic. The seed is recorded only for the EDA subsampling convention."
+}

@@ -1,0 +1,2 @@
+# Transaction-level numeric extracts derived from the raw archives (regenerate with preprocessing/extract_transactions.py)
+data/derived/*.npz

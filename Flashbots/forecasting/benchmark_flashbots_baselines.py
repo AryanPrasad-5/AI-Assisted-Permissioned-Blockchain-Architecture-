@@ -1,4 +1,11 @@
-"""Run leakage-safe Flashbots baseline forecasts on processed daily series."""
+"""LEGACY (first) Flashbots baseline benchmark: 7 baselines, 50/50 within-day split, stride-1 origins.
+
+Superseded by the pre-registered P2 benchmark (run_forecast_benchmark.py) and FB-FC-v1
+(run_flashbots_benchmark.py). Its stored output is experiments/results/flashbots_baseline_metrics.csv. Its burst
+threshold is a 95th percentile of the evaluation-day's own first half, and its within-day "evaluation" half was
+never frozen against a separate test day, so its numbers are HISTORICAL, not a test result.
+It refuses to overwrite an existing output unless --force is given.
+"""
 
 from __future__ import annotations
 
@@ -6,8 +13,11 @@ import argparse
 import json
 from pathlib import Path
 
+import sys
+
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from fabric_perf.forecasting.flashbots import evaluate_baselines
 
 
@@ -24,7 +34,10 @@ def main() -> None:
     parser.add_argument("--series-dir", type=Path, default=Path("data/processed/flashbots"))
     parser.add_argument("--out", type=Path, default=Path("experiments/results/flashbots_baseline_metrics.csv"))
     parser.add_argument("--stride", type=int, default=1)
+    parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
+    if args.out.exists() and not args.force:
+        raise SystemExit(f"REFUSED: {args.out} exists (stored legacy result); pass a new --out or --force")
     rows = []
     loaded = {}
     thresholds = {}

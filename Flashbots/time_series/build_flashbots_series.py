@@ -1,4 +1,11 @@
-"""Build complete daily Flashbots arrival-count series from ZIP archives."""
+"""Build complete daily Flashbots arrival-count series (1/5/10 s) from the ZIP archives.
+
+This is the ORIGINAL builder of the six stored series in data/processed/flashbots/. They have been verified
+bin-for-bin by Flashbots/time_series/build_target_series.py (see series_verification.json), so there is no need to
+rerun this. It refuses to overwrite existing series unless --force is given (P2 recorded their SHA-256).
+
+    .venv/Scripts/python.exe -B Flashbots/time_series/build_flashbots_series.py --out-dir <new folder>
+"""
 
 from __future__ import annotations
 
@@ -7,8 +14,11 @@ import hashlib
 import json
 from pathlib import Path
 
+import sys
+
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from fabric_perf.forecasting.flashbots import build_daily_series
 
 
@@ -24,7 +34,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, default=Path("data/manifests/flashbots_mempool_manifest.yaml"))
     parser.add_argument("--out-dir", type=Path, default=Path("data/processed/flashbots"))
+    parser.add_argument("--force", action="store_true", help="overwrite existing series (they are hashed by the frozen P2 benchmark)")
     args = parser.parse_args()
+    existing = sorted(args.out_dir.glob("series_*.csv.gz")) if args.out_dir.exists() else []
+    if existing and not args.force:
+        raise SystemExit(f"REFUSED: {len(existing)} series already exist in {args.out_dir}; use a new --out-dir or --force")
     manifest = yaml.safe_load(args.manifest.read_text(encoding="utf-8"))
     args.out_dir.mkdir(parents=True, exist_ok=True)
     source_audit_path = Path("experiments/results/flashbots_archive_audit.json")
