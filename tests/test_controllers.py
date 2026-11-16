@@ -36,6 +36,7 @@ def state(config, *, latency=100, queue=0, history=()):
         observed_latency_ms=latency,
         queue_depth=queue,
         arrival_history_tps=history,
+        telemetry_age_s=0,
     )
 
 
@@ -63,6 +64,7 @@ def test_reactive_controller_requires_consecutive_congestion_and_has_hysteresis(
     )
     assert controller.decide(state(default, latency=210, queue=11)).changed is False
     assert controller.decide(state(default, latency=220, queue=12)).config == relief
+    controller.configuration_applied(relief)
     assert controller.decide(state(relief, latency=150, queue=5)).config == relief
     assert controller.decide(state(relief, latency=100, queue=2)).config == relief
     assert controller.decide(state(relief, latency=100, queue=2)).config == default
