@@ -125,9 +125,7 @@ class TestNoMutation(unittest.TestCase):
         df = _sample_df()
         out = add_engineered_features(df)
         self.assertIsNot(out, df)
-        # Original frame untouched:
         self.assertNotIn("log_set_rate", df.columns)
-        # The originals are preserved verbatim in the copy:
         pd.testing.assert_series_equal(out["Throughput"], df["Throughput"])
 
 
@@ -176,7 +174,6 @@ class TestSplitIntegrity(unittest.TestCase):
         tr, va, te, info = t1b_right_edge_band_split(full)
         self._check_disjoint_keys(tr, va, te)
         self.assertEqual(set(T1B_TEST_BAND), set(info["test_band"]))
-        # every in-band row is in test and nowhere else
         lo, hi = T1B_TEST_BAND
         in_band = full[(full["Block Size"] >= lo) & (full["Block Size"] <= hi)]
         self.assertEqual(len(te), len(in_band))
@@ -193,7 +190,6 @@ class TestSplitIntegrity(unittest.TestCase):
         full = add_engineered_features(_sample_df(n=400))
         tr, va, te, info = t2_d0_workload_split(full)
         self._check_disjoint_keys(tr, va, te)
-        # no test/val workload level appears in training
         used = set(tr["Set Transaction Arrival Rate"].unique())
         for lv in (30, 140, 150, 160, 155):
             self.assertNotIn(lv, used)

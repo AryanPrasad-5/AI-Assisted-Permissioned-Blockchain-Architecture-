@@ -3,7 +3,7 @@ import ast
 import unittest
 from pathlib import Path
 
-NOTEBOOKS = sorted((Path(__file__).resolve().parent.parent / "notebooks").glob("*.ipynb"))
+NOTEBOOKS = sorted((Path(__file__).resolve().parent.parent / "HFBTP").glob("*/*.ipynb"))
 
 
 def _without_magics(source: str) -> str:
