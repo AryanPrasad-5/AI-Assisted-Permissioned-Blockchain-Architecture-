@@ -1,8 +1,10 @@
 """P2: leakage-safe horizon-mean forecast benchmark.
 
-Commands (offline; read the stored 1-s count series, write under experiments/results/flashbots_horizon_benchmark_v2/):
-    .venv/Scripts/python.exe -I -B scripts/replay/run_forecast_benchmark.py select
-    .venv/Scripts/python.exe -I -B scripts/replay/run_forecast_benchmark.py final --frozen-sha256 <SHA-256 of selection_frozen.json>
+Commands (offline; read the stored 1-s count series, write under experiments/results/flashbots_horizon_benchmark_v2/).
+Both stages have ALREADY RUN (2026-11-14) and refuse to run again into the same folder; to repeat them use --out-dir
+with a new folder. (The script originally lived in scripts/replay/; it moved here in the repository split.)
+    .venv/Scripts/python.exe -I -B Flashbots/forecasting/run_forecast_benchmark.py select --out-dir <new>
+    .venv/Scripts/python.exe -I -B Flashbots/forecasting/run_forecast_benchmark.py final --out-dir <new> --frozen-sha256 <SHA-256 of selection_frozen.json>
 
 `select` touches only the 21 Sep series. `final` touches only the 12 Oct series and runs once.
 """
