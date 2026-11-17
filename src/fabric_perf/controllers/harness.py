@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
-from .base import BaseController, ControllerState, FabricConfig, coerce_config
+from .base import BaseController, ControllerDecision, ControllerState, FabricConfig, coerce_config, confirmed_config
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,7 @@ def _config_from_record(value: Any) -> FabricConfig | None:
     if value is None:
         return None
     try:
-        return coerce_config(value)
+        return confirmed_config(value)
     except (TypeError, ValueError):
         return None
 
@@ -70,16 +70,18 @@ def _apply_result_from_callback(
 ) -> ApplyResult:
     """Normalize the verified Fabric actuator record without losing evidence."""
     if isinstance(result, ApplyResult):
+        if result.accepted and (result.verified_config != requested or result.applied_config != requested
+                                or result.remote_state_unknown):
+            return replace(result, accepted=False, applied_config=previous, verified_config=None,
+                           error="actuator success lacks matching verified configuration",
+                           remote_state_unknown=True)
         return result
     if result is None:
-        if require_verified_result:
-            return ApplyResult(False, previous, elapsed_ms, "verified actuator returned no result record",
-                               previous_config=previous, requested_config=requested)
-        return ApplyResult(True, requested, elapsed_ms, previous_config=previous, requested_config=requested,
-                           verified_config=requested)
+        return ApplyResult(False, previous, elapsed_ms, "verified actuator returned no result record",
+                           previous_config=previous, requested_config=requested, remote_state_unknown=True)
     success = _record_value(result, "success")
     after = _config_from_record(_record_value(result, "after_config"))
-    accepted = success is True and after is not None and after == requested
+    accepted = success is True and after is not None and after == requested and not _record_value(result, "remote_state_unknown", False)
     error = _record_value(result, "error")
     if not accepted and not error:
         error = "actuator result was not commit-verified for the requested configuration"
@@ -98,7 +100,7 @@ def _apply_result_from_callback(
         error=error,
         previous_config=previous,
         requested_config=requested,
-        verified_config=after,
+        verified_config=after if accepted else None,
         submission_start_timestamp_utc=submission_start,
         submission_completion_timestamp_utc=submission_end,
         config_block_commit_timestamp_utc=commit_ts,
@@ -110,7 +112,7 @@ def _apply_result_from_callback(
         after_block_number=_record_value(result, "after_block_number"),
         verification=_record_value(result, "verification_checks"),
         failure_category=_record_value(result, "failure_category"),
-        remote_state_unknown=bool(_record_value(result, "remote_state_unknown", False)),
+        remote_state_unknown=bool(_record_value(result, "remote_state_unknown", not accepted)),
     )
 
 
@@ -144,7 +146,7 @@ class CallableActuator:
     """
 
     def __init__(self, initial_config: FabricConfig, apply_fn: Callable[[FabricConfig], Any], *,
-                 require_verified_result: bool = False,
+                 require_verified_result: bool = True,
                  verify_fn: Callable[[Any, FabricConfig], Any] | None = None):
         self._current_config = coerce_config(initial_config)
         self.apply_fn = apply_fn
@@ -233,6 +235,10 @@ class ShadowActuator:
     def current_config(self) -> FabricConfig:
         return self._current_config
 
+    def observe_recorded_config(self, config: FabricConfig) -> None:
+        """Follow a recorded configuration without treating proposals as applied."""
+        self._current_config = coerce_config(config)
+
     def apply(self, config: FabricConfig) -> ApplyResult:
         candidate = coerce_config(config)
         result = ApplyResult(False, self._current_config, 0.0,
@@ -252,16 +258,23 @@ class ControllerExperimentHarness:
     """
 
     def __init__(self, controller: BaseController, actuator: ConfigurationActuator, *, run_id: str,
-                 configuration_policy: ConfigurationPolicy | None = None):
+                 configuration_policy: ConfigurationPolicy | None = None, history_serialization: str = "full"):
+        if history_serialization not in {"full", "auto"}:
+            raise ValueError("history_serialization must be full or auto")
         self.controller = controller
         self.actuator = actuator
         self.run_id = run_id
         self.configuration_policy = configuration_policy
+        # "full" (default, offline/historical records) copies the arrival arrays into each
+        # record as before; "auto" stores the shared-history reference when the state has one.
+        self.history_serialization = history_serialization
+        self.remote_state_unknown = False
 
     def process(self, state: ControllerState) -> dict:
         state.current_config = self.actuator.current_config
         start = time.perf_counter_ns()
-        decision = self.controller.decide(state)
+        decision = (ControllerDecision("safety", state.current_config, False, "remote_state_unknown_fail_safe")
+                    if self.remote_state_unknown else self.controller.decide(state))
         decision.decision_overhead_ms = (time.perf_counter_ns() - start) / 1_000_000
         application = None
         if decision.changed and decision.config != self.actuator.current_config:
@@ -269,16 +282,37 @@ class ControllerExperimentHarness:
                 if self.configuration_policy is not None:
                     self.configuration_policy.validate(decision.config)
                     decision.metadata["safety_gate"] = {"accepted": True, "reason": "approved_candidate"}
-                application = self.actuator.apply(decision.config)
             except Exception as exc:
                 decision.metadata["safety_gate"] = {"accepted": False, "reason": str(exc)}
                 application = ApplyResult(False, self.actuator.current_config, 0.0,
                                           f"safety_gate_rejected: {type(exc).__name__}: {exc}",
                                           previous_config=self.actuator.current_config,
                                           requested_config=decision.config)
+            else:
+                try:
+                    application = self.actuator.apply(decision.config)
+                except Exception as exc:
+                    application = ApplyResult(False, self.actuator.current_config, 0.0,
+                                              f"actuator_error: {type(exc).__name__}: {exc}",
+                                              requested_config=decision.config, remote_state_unknown=True)
+            if application.accepted and (application.verified_config != decision.config
+                                         or application.applied_config != decision.config
+                                         or self.actuator.current_config != decision.config
+                                         or application.remote_state_unknown):
+                application = replace(application, accepted=False, verified_config=None,
+                                      error="actuator confirmation mismatch", remote_state_unknown=True)
+            if application.accepted:
+                self.controller.configuration_applied(application.verified_config)
+            if application.remote_state_unknown:
+                self.remote_state_unknown = True
         return {
             "run_id": self.run_id,
-            "state": state.as_dict(),
+            "state": state.as_dict(history=self.history_serialization),
+            "configuration_state": {
+                "after": None if self.remote_state_unknown else self.actuator.current_config.as_dict(),
+                "remote_state_unknown": self.remote_state_unknown,
+                "proposal_applied": bool(application and application.accepted),
+            },
             "decision": decision.as_dict(),
             "application": None if application is None else {
                 "accepted": application.accepted,

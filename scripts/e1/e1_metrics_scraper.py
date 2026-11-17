@@ -68,10 +68,12 @@ from pathlib import Path
 from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-import e1_telemetry_common as tc              
+import e1_telemetry_common as tc
+from fabric_perf.controllers import metric_baseline as mb  # noqa: E402  (standard library only)
 
-TOOL_VERSION = "e1_metrics_scraper 0.2 (2026-11-09, E0-0 remediation F3a)"
+TOOL_VERSION = "e1_metrics_scraper 0.3 (2026-11-17, strict baseline mode; default mode unchanged from 0.2)"
                                                                                                       
                                                                               
 DEFAULT_EXPECTED = {
@@ -447,8 +449,45 @@ def traffic_roles(out_rows: list[dict], channel: str, leaders_after: list[str]) 
             "leaders_after": sorted(leaders_after)}
 
 
+FILL_COUNT = "blockcutter_block_fill_duration_count"
+FILL_SUM = "blockcutter_block_fill_duration_sum"
+
+
+def _phase_fill_observation(phase_dir: Path, target: str, channel: str) -> "mb.HistogramObservation":
+    """Classify one target's block-fill reading in a single-scrape phase directory (before or after).
+
+    The state comes from the scrape record of the last round and then from the raw body, never from an
+    earlier successful scrape, so a failed final scrape cannot silently fall back to an older value.
+    Raw bodies are used because they keep every sample, whatever ``--family-filter`` kept in samples.csv.
+    """
+    scrapes = [r for r in tc.read_csv(phase_dir / "scrapes.csv") if r["target"] == target]
+    if not scrapes:
+        return mb.HistogramObservation(mb.BaselineState.SCRAPE_FAILED, detail="no scrape record for the target")
+    last = max(scrapes, key=lambda r: int(r["round"]))
+    if last["error"]:
+        return mb.HistogramObservation(mb.BaselineState.SCRAPE_FAILED, detail=f"scrape error: {last['error']}")
+    if str(last["http_status"]) != "200":
+        return mb.HistogramObservation(mb.BaselineState.SCRAPE_FAILED, detail=f"HTTP {last['http_status']}")
+    try:
+        text = (phase_dir / last["raw_file"]).read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError, KeyError) as err:
+        return mb.HistogramObservation(mb.BaselineState.MALFORMED, detail=f"raw body unreadable: {type(err).__name__}")
+    if not text.strip():
+        return mb.HistogramObservation(mb.BaselineState.MALFORMED, detail="empty scrape")
+    samples, _types, problems = parse_exposition(text)
+    bad = sorted({p[0] for p in problems if p[0] in ("malformed_line", "type_conflict")})
+    if bad:
+        return mb.HistogramObservation(mb.BaselineState.MALFORMED, detail=f"exposition problems: {bad}")
+    if any(s["duplicate"] for s in samples if s["metric"].startswith(mb.FAMILY)):
+        return mb.HistogramObservation(mb.BaselineState.MALFORMED, detail="duplicate block-fill series")
+    return mb.observe_histogram(((s["metric"], s["labels"], s["value"]) for s in samples if not s["duplicate"]),
+                                channel=channel)
+
+
 def summarize(before: Path, after: Path, out_dir: Path, *, during: Path | None = None, channel: str | None = None,
-              fresh_channel: bool = False, expect_traffic: bool = False, argv: list[str] | None = None) -> dict:
+              fresh_channel: bool = False, expect_traffic: bool = False, argv: list[str] | None = None,
+              strict_baseline: bool = False, ledger_height_before: int | None = None,
+              ledger_height_after: int | None = None) -> dict:
                                                                                                         
                                                                                                      
                                                                                                      
@@ -456,6 +495,15 @@ def summarize(before: Path, after: Path, out_dir: Path, *, during: Path | None =
                                                                                                      
     if expect_traffic and channel is None:
         raise ValueError("expect_traffic needs a channel")
+    if strict_baseline:
+        if fresh_channel:
+            raise ValueError("strict baseline forbids fresh_channel: an absent baseline is never read as zero")
+        if channel is None:
+            raise ValueError("strict baseline needs a channel")
+    if (ledger_height_before is None) != (ledger_height_after is None):
+        raise ValueError("give both ledger heights or neither")
+    if ledger_height_before is not None and not strict_baseline:
+        raise ValueError("ledger heights are used by strict baseline mode only")
     an = tc.Anomalies(COMPLETENESS, CONSISTENCY, WARNINGS)
     phases = {"before": before, "after": after}
     if during is not None:
@@ -556,6 +604,41 @@ def summarize(before: Path, after: Path, out_dir: Path, *, during: Path | None =
                 set(traffic["block_cutters"]) != set(traffic["leaders_after"]):
             an.add("cutter_not_leader", "any orderer", f"cutters {sorted(traffic['block_cutters'])} vs leaders "
                                                        f"after {traffic['leaders_after']}")
+    strict_section = None
+    if strict_baseline:
+        # Owner decision D3 (2026-11-17): every orderer's block-fill series is classified before and
+        # after the run, a counter delta is reported only when both readings are valid and comparable,
+        # and an absent baseline is reported as unavailable, never as zero. Block creation is checked
+        # independently against the ledger height delta when the caller supplies the two heights.
+        fill_deltas, fill_detail = {}, {}
+        for target in sorted(t for t, role in roles.items() if role == "orderer"):
+            before_reading = _phase_fill_observation(before, target, channel)
+            after_reading = _phase_fill_observation(after, target, channel)
+            reset = False
+            for key, observed in series_obs.items():
+                if key[0] == target and key[1] in (FILL_COUNT, FILL_SUM) and has_label(key[2], "channel", channel):
+                    ordered = sorted(observed)
+                    reset = reset or any(y < x for (_, x), (_, y) in zip(ordered, ordered[1:]))
+            fill_deltas[target] = mb.assess_delta(before_reading, after_reading, reset_seen=reset)
+            fill_detail[target] = {"before": before_reading.as_dict(), "after": after_reading.as_dict(),
+                                   "reset_seen": reset, "delta": fill_deltas[target].as_dict()}
+        if ledger_height_before is None:
+            cross = mb.BlockCountCrossCheck(mb.CrossCheck.NOT_COMPARABLE, None, None,
+                                            "no independent ledger heights supplied")
+        else:
+            cross = mb.cross_check_block_count(fill_deltas, ledger_height_before=ledger_height_before,
+                                               ledger_height_after=ledger_height_after)
+        unresolved = [t for t, d in fill_deltas.items()
+                      if d.status is mb.DeltaStatus.UNAVAILABLE and not d.never_observed]
+        strict_section = {
+            "baseline_policy": "strict: absent baseline is unavailable, never zero; fresh_channel is forbidden",
+            "block_fill_baseline": fill_detail,
+            "block_fill_delta_status": "unavailable" if unresolved or not fill_deltas else "available",
+            "block_fill_delta_unavailable_for": unresolved,
+            "ledger_cross_check": cross.as_dict(),
+            "semantics_note": "a counter delta (per orderer process, restarts at zero, absent until the first cut) "
+                              "and a ledger block-height delta (per channel, authoritative) are different "
+                              "quantities; see fabric_perf.controllers.metric_baseline"}
     inputs_status = {ph: m["status"] for ph, m in manifests.items()}
     status = tc.worst([an.status(), *inputs_status.values()])
     out_dir.mkdir(parents=True, exist_ok=False)
@@ -571,6 +654,8 @@ def summarize(before: Path, after: Path, out_dir: Path, *, during: Path | None =
                "derived_note": "inputs for gates V5 (fill_duration_mean_s, all cut causes pooled) and V6 "
                                "(leader_changes_delta); no outcome metric",
                "status": status, "anomalies": an.counts(), "outputs_sha256": outputs}
+    if strict_section is not None:
+        summary.update(strict_section)
     tc.write_json_x(out_dir / "metrics_summary.json", summary)
     return summary
 
@@ -595,11 +680,23 @@ def main(argv: list[str] | None = None, fetch: Fetch | None = None) -> int:
     z.add_argument("--after", required=True, type=Path)
     z.add_argument("--during", type=Path)
     z.add_argument("--channel")
-    z.add_argument("--fresh-channel", action="store_true")
+    z.add_argument("--fresh-channel", action="store_true",
+                   help="read an absent 'before' series as zero. Never use it to validate a run: it hides blocks "
+                        "cut before the baseline (owner decision D3, 2026-11-17); use --strict-baseline")
+    z.add_argument("--strict-baseline", action="store_true",
+                   help="classify every orderer's block-fill series before and after, report an absent or invalid "
+                        "baseline as unavailable (never zero), and cross-check against the ledger height delta. "
+                        "Needs --channel; cannot be combined with --fresh-channel")
+    z.add_argument("--ledger-height-before", type=int,
+                   help="independently observed channel ledger height before the run (peer getinfo / osnadmin)")
+    z.add_argument("--ledger-height-after", type=int,
+                   help="independently observed channel ledger height after the run")
     z.add_argument("--expect-traffic", action="store_true",
                    help="the run submitted transactions on --channel: require a receiving and a cutting orderer")
     z.add_argument("--out-dir", required=True, type=Path)
     args = ap.parse_args(argv)
+    if args.cmd == "summarize" and args.strict_baseline and args.fresh_channel:
+        ap.error("--strict-baseline forbids --fresh-channel: an absent baseline is never read as zero")
     if args.out_dir.exists():
         print(f"refusing to overwrite {args.out_dir}")
         return 2
@@ -607,8 +704,13 @@ def main(argv: list[str] | None = None, fetch: Fetch | None = None) -> int:
     try:
         if args.cmd == "summarize":
             m = summarize(args.before, args.after, args.out_dir, during=args.during, channel=args.channel,
-                          fresh_channel=args.fresh_channel, expect_traffic=args.expect_traffic, argv=cmdline)
+                          fresh_channel=args.fresh_channel, expect_traffic=args.expect_traffic, argv=cmdline,
+                          strict_baseline=args.strict_baseline, ledger_height_before=args.ledger_height_before,
+                          ledger_height_after=args.ledger_height_after)
             print(f"METRICS SUMMARY {m['status']} -> {args.out_dir}")
+            if args.strict_baseline:
+                print(f"  block-fill delta {m['block_fill_delta_status']}; ledger cross-check "
+                      f"{m['ledger_cross_check']['verdict']}")
             return tc.EXIT[m["status"]]
         targets = parse_targets(args.target)
         if not args.execute:

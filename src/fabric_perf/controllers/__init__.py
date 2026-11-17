@@ -23,8 +23,13 @@ from fabric_perf.controllers.telemetry import (
     MetricObservation,
     PrometheusTelemetryAdapter,
     TelemetryDataError,
+    TelemetryTimestampError,
     caliper_snapshot_from_summary,
 )
+from fabric_perf.controllers.telemetry_errors import TelemetryReadFailure
+from fabric_perf.controllers.telemetry_freshness import FreshnessPolicy, FreshnessStatus
+from fabric_perf.controllers.metric_baseline import BaselineState, DeltaStatus
+from fabric_perf.controllers.config_evidence import ConfigEvidence, ConfigEvidenceError
 from fabric_perf.controllers.live_integration import (
     AdaptationLatencyEvidence,
     IntegratedControllerRunner,
@@ -34,6 +39,7 @@ from fabric_perf.controllers.live_integration import (
     ProductionTelemetryProvider,
     StopPolicy,
     TelemetryFrame,
+    TelemetryQualityError,
     TimestampContract,
     ledger_observation_from_blocks_csv,
     load_direct_cut_events,
@@ -65,6 +71,15 @@ __all__ = [
     "MetricObservation",
     "PrometheusTelemetryAdapter",
     "TelemetryDataError",
+    "TelemetryTimestampError",
+    "TelemetryReadFailure",
+    "FreshnessPolicy",
+    "FreshnessStatus",
+    "BaselineState",
+    "DeltaStatus",
+    "ConfigEvidence",
+    "ConfigEvidenceError",
+    "TelemetryQualityError",
     "caliper_snapshot_from_summary",
     "AdaptationLatencyEvidence",
     "IntegratedControllerRunner",
