@@ -1,5 +1,23 @@
                                                                            
 
+"""Read-only verification of a channel's committed configuration (peer channel fetch config + configtxlator).
+
+Two modes, and one of them must be chosen explicitly (task A0b, 2026-11-20). There is no default channel.
+
+``--channel NAME`` (the mode for new experiments)
+    Fetch, decode and report the committed configuration of the dedicated validation channel NAME, and check it
+    against the expected values given with the ``--expect-*`` options (at least one is required). NAME must pass
+    ``fabric_perf.controllers.channel_selection``: the protected reference channels ``e1-r002`` and ``e1-cfg001``
+    and the channels of earlier experiments are refused before any command runs.
+
+``--historical-cfg001-r002-verification`` (historical, read-only)
+    Reproduce the 2026-11-10 verification of the two protected reference channels exactly as it was: fetch both,
+    compare ``e1-cfg001`` (target B=40) with the ``e1-r002`` baseline (B=45), and optionally validate the prepared
+    transition with ``--before-block``. It selects no experiment channel and cannot be combined with ``--channel``.
+
+Both modes only read. Neither submits a transaction or a configuration update.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -15,8 +33,15 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from e1_config_transition import (TransitionValidationError, channel_id_from_block,
                                   expected_batch_size_config, validate_batch_size_transition)
+from fabric_perf.controllers import channel_selection as cs  # noqa: E402  (standard library only)
+
+# --expect-* option -> key of config_projection(). Mirrors the five canonical configuration fields.
+EXPECTATION_OPTIONS = (("expect_max_message_count", "max_message_count"), ("expect_batch_timeout_ms", "batch_timeout_ms"),
+                       ("expect_preferred_max_bytes", "preferred_max_bytes"),
+                       ("expect_absolute_max_bytes", "absolute_max_bytes"), ("expect_orderers", "orderers"))
 
 
 def now() -> str:
@@ -303,8 +328,8 @@ class IndependentFabricConfigVerifier:
         return self.verify_transition(*args, **kwargs)
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__)
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out-dir", type=Path, required=True)
     p.add_argument("--peer", type=Path, required=True)
     p.add_argument("--configtxlator", type=Path, required=True)
@@ -313,8 +338,24 @@ def main() -> int:
     p.add_argument("--org1-admin-msp", type=Path, required=True)
     p.add_argument("--orderer", default="localhost:7050")
     p.add_argument("--orderer-tls-hostname", default="orderer.example.com")
-    p.add_argument("--before-block", type=Path, help="optional prepared pre-update common.Block JSON for transition validation")
-    args = p.parse_args()
+    p.add_argument("--before-block", type=Path, help="historical mode only: prepared pre-update common.Block JSON for transition validation")
+    mode = p.add_argument_group("mode (choose one explicitly)")
+    mode.add_argument("--channel", type=cs.experiment_channel_arg, metavar="CHANNEL",
+                      help="verify the committed configuration of this dedicated validation channel")
+    mode.add_argument("--historical-cfg001-r002-verification", action="store_true",
+                      help="historical read-only mode: reproduce the 2026-11-10 verification of the two protected "
+                           "reference channels; selects no experiment channel")
+    expect = p.add_argument_group("expected configuration for --channel (at least one is required)")
+    expect.add_argument("--expect-max-message-count", type=int, metavar="B")
+    expect.add_argument("--expect-batch-timeout-ms", type=int, metavar="MS")
+    expect.add_argument("--expect-preferred-max-bytes", type=int, metavar="BYTES")
+    expect.add_argument("--expect-absolute-max-bytes", type=int, metavar="BYTES")
+    expect.add_argument("--expect-orderers", type=int, metavar="N", help="expected number of consenters")
+    return p
+
+
+def run_historical_verification(args: argparse.Namespace) -> int:
+    """The 2026-11-10 verification of the two protected reference channels, unchanged (read-only)."""
     root = args.out_dir / f"independent-verification-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}"
     root.mkdir(parents=True, exist_ok=False)
     env = os.environ.copy()
@@ -354,6 +395,66 @@ def main() -> int:
     (root / "independent_verification.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))
     return 0 if result["all_checks_pass"] else 1
+
+
+def run_explicit_verification(args: argparse.Namespace, expectations: dict[str, int]) -> int:
+    """Read-only fetch, decode and check of one explicitly selected, dedicated validation channel."""
+    channel = args.channel
+    root = args.out_dir / f"independent-verification-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}"
+    root.mkdir(parents=True, exist_ok=False)
+    env = os.environ.copy()
+    env.update({"FABRIC_CFG_PATH": str(args.fabric_cfg), "CORE_PEER_TLS_ENABLED": "true",
+                "CORE_PEER_LOCALMSPID": "Org1MSP", "CORE_PEER_MSPCONFIGPATH": str(args.org1_admin_msp),
+                "CORE_PEER_ADDRESS": "localhost:7051",
+                "CORE_PEER_TLS_ROOTCERT_FILE": str(args.org1_admin_msp.parents[2] / "tlsca" / "tlsca.org1.example.com-cert.pem")})
+    commands: list[dict] = []
+    block_path, json_path = root / f"{channel}.pb", root / f"{channel}.json"
+    run(f"{channel}-fetch", [str(args.peer), "channel", "fetch", "config", str(block_path), "-c", channel,
+                              "-o", args.orderer, "--ordererTLSHostnameOverride", args.orderer_tls_hostname,
+                              "--tls", "--cafile", str(args.orderer_ca)], env, root, commands)
+    run(f"{channel}-decode", [str(args.configtxlator), "proto_decode", "--input", str(block_path),
+                              "--type", "common.Block", "--output", str(json_path)], env, root, commands)
+    result = {"tool": "e1_independent_config_verify 0.3 (explicit channel)", "mode": "explicit_channel", "read_only": True,
+              "verification_timestamp_utc": now(), "evidence_dir": str(root), "commands": commands, "channel": channel,
+              "channel_selection": cs.selection_record(channel, role=cs.ROLE_EXPERIMENT, option="--channel"),
+              "expected": dict(expectations)}
+    try:
+        block = json.loads(json_path.read_text(encoding="utf-8"))
+        block_channel = channel_id_from_block(block)
+        facts = config_facts(channel, block, block_path)
+        projection = config_projection(block)
+    except (OSError, ValueError, KeyError, IndexError, TypeError, TransitionValidationError, IndependentVerificationError) as exc:
+        result.update({"error": f"{type(exc).__name__}: {exc}", "checks": {}, "all_checks_pass": False})
+        (root / "independent_verification.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(result, indent=2))
+        return 1
+    checks = {"config_block_names_the_requested_channel": block_channel == channel}
+    for option, key in EXPECTATION_OPTIONS:
+        if option in expectations:
+            checks[f"{key}_equals_expected"] = projection[key] == expectations[option]
+    result.update({"facts": facts, "projection": projection, "checks": checks, "all_checks_pass": all(checks.values())})
+    (root / "independent_verification.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(result, indent=2))
+    return 0 if result["all_checks_pass"] else 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = build_parser()
+    args = p.parse_args(argv)
+    expectations = {option: getattr(args, option) for option, _ in EXPECTATION_OPTIONS if getattr(args, option) is not None}
+    if args.historical_cfg001_r002_verification:
+        if args.channel is not None:
+            p.error("--channel cannot be combined with the historical read-only mode")
+        if expectations:
+            p.error("the --expect-* options apply only to --channel")
+        return run_historical_verification(args)
+    if args.channel is None:
+        p.error("no channel was selected: pass --channel with the dedicated validation channel")
+    if args.before_block is not None:
+        p.error("--before-block belongs to the historical read-only mode")
+    if not expectations:
+        p.error("--channel verifies nothing without an expected value: give at least one --expect-* option")
+    return run_explicit_verification(args, expectations)
 
 
 if __name__ == "__main__":

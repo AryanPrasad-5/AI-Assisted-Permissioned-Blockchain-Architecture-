@@ -24,9 +24,15 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parents[1] / "src"))
 
 import e1_block_fetch as bf  # noqa: E402
 import e1_channel_run as cr  # noqa: E402
+from fabric_perf.controllers import channel_selection as cs  # noqa: E402  (standard library only)
+
+# The channel the stored template run (q22c001, held in WSL) carries. copy_run_template rewrites this literal to
+# the selected channel, then verify_template_rewritten proves the rewrite happened (task A0b, 2026-11-20).
+TEMPLATE_CHANNEL_PLACEHOLDER = "e1-cfg001"
 
 
 def utc_now() -> str:
@@ -45,7 +51,34 @@ def get_height(net: cr.Network, channel: str) -> tuple[int | None, str]:
     return (int(info["height"]) if info else None), text
 
 
+def verify_template_rewritten(target: Path, channel: str) -> None:
+    """Refuse a generated Caliper run that does not name exactly the selected channel.
+
+    The rewrite in copy_run_template replaces one literal. A template that lacks it would silently keep its own
+    channel, which could be a protected reference channel. So the generated network configuration must name the
+    selected channel, and no file of the run may still name a protected reference channel.
+    """
+    network = target / "networkconfig.yaml"
+    if channel not in network.read_text(encoding="utf-8"):
+        raise cs.ChannelSelectionError(
+            cs.TEMPLATE_NOT_REWRITTEN,
+            f"the generated {network} does not name the selected channel {channel!r}: the template run did not carry "
+            f"the placeholder channel {TEMPLATE_CHANNEL_PLACEHOLDER!r}, so nothing was rewritten. Nothing was run.",
+            value=channel)
+    for path in sorted(target.rglob("*")):
+        if not path.is_file() or path.suffix not in {".json", ".yaml", ".js"}:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for name in sorted(cs.PROTECTED_REFERENCE_CHANNELS):
+            if name in text:
+                raise cs.ChannelSelectionError(
+                    cs.PROTECTED_REMAINS,
+                    f"{path} still names the protected reference channel {name!r} after the rewrite. Nothing was run.",
+                    value=name)
+
+
 def copy_run_template(template: Path, target: Path, run_id: str, channel: str, container_workspace: str) -> None:
+    channel = cs.select_experiment_channel(channel, purpose="a contemporaneous capture run", option="--channel")
     if target.exists():
         raise FileExistsError(f"refusing to overwrite Caliper run directory: {target}")
     shutil.copytree(template, target)
@@ -53,7 +86,7 @@ def copy_run_template(template: Path, target: Path, run_id: str, channel: str, c
         if not path.is_file() or path.suffix not in {".json", ".yaml", ".js"}:
             continue
         text = path.read_text(encoding="utf-8")
-        text = text.replace("q22c001", run_id).replace("e1-cfg001", channel)
+        text = text.replace("q22c001", run_id).replace(TEMPLATE_CHANNEL_PLACEHOLDER, channel)
         path.write_text(text, encoding="utf-8")
     network = target / "networkconfig.yaml"
     network.write_text(network.read_text(encoding="utf-8").replace("q22c001", run_id), encoding="utf-8")
@@ -73,6 +106,7 @@ def copy_run_template(template: Path, target: Path, run_id: str, channel: str, c
     monitor["options"]["outputDir"] = f"{container_workspace}/runs/{run_id}/recorder"
     monitor["module"] = f"{container_workspace}/runs/{run_id}/modules/e1_per_tx_recorder.js"
     (target / "benchmark.yaml").write_text(json.dumps(benchmark, indent=2) + "\n", encoding="utf-8")
+    verify_template_rewritten(target, channel)
 
 
 def prometheus_sampler(stop: threading.Event, out: Path, endpoints: dict[str, str]) -> None:
@@ -130,14 +164,20 @@ def live_block_observer(stop: threading.Event, net: cr.Network, channel: str, fi
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--run-id", default="phase2a3-c001")
-    ap.add_argument("--channel", default="e1-cfg001")
+    # Required, no default: a capture never falls back to a protected reference channel (owner decision D1,
+    # 2026-11-17). The same goes for the block size, which is written into run_metadata.json as a claim about
+    # the channel and must never be an assumed constant (live-shadow fix 1).
+    ap.add_argument("--channel", required=True, type=cs.experiment_channel_arg, metavar="CHANNEL",
+                    help="the dedicated validation channel; the protected reference channels are refused")
     ap.add_argument("--network", type=Path, default=Path("fabric-testbed/network/network-e1-recovery.json"))
     ap.add_argument("--template-run", type=Path, default=Path("/home/mailf18/e1/caliper-ws-benchmark/runs/q22c001"))
     ap.add_argument("--caliper-run", type=Path, default=Path("/home/mailf18/e1/caliper-ws-benchmark/runs/phase2a3-c001"))
     ap.add_argument("--container", default="caliper-benchmark-001")
     ap.add_argument("--container-workspace", default="/hyperledger/caliper/workspace")
     ap.add_argument("--out-dir", type=Path, default=Path("/home/mailf18/e1/final-runs/phase2a3-c001-run"))
-    ap.add_argument("--max-message-count", type=int, default=40)
+    ap.add_argument("--max-message-count", type=int, required=True,
+                    help="the channel's BatchSize.MaxMessageCount, recorded as an operator assertion; verify it "
+                         "against the fetched channel configuration")
     ap.add_argument("--preferred-max-bytes", type=int, default=10_485_760)
     ap.add_argument("--prom-endpoint", action="append", default=[
         "orderer1=http://localhost:9443/metrics", "orderer2=http://localhost:9446/metrics",

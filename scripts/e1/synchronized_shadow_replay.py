@@ -5,6 +5,12 @@ channel, changes channel configuration, invokes the configuration actuator, or
 touches chaincode definitions. The replay payload is synthetic ``CreateAsset``
 traffic; only the audited Flashbots arrival counts and UTC bin order are used.
 
+Task A0b (2026-11-20): the channel is named explicitly (``--channel``) and must be a dedicated validation channel
+(``fabric_perf.controllers.channel_selection``): the protected reference channels ``e1-r002`` and ``e1-cfg001`` are
+refused and there is no default. The expected ``MaxMessageCount`` is a separate explicit input
+(``--expected-max-message-count``), checked against the configuration fetched from the channel before the run; it
+used to come from a table keyed by channel name, which allowed only the two protected channels.
+
 The execution path is Linux/WSL because the verified Caliper/Fabric tooling is
 inside the Ubuntu environment. ``--prepare`` is read-only with respect to
 Fabric. ``--execute`` performs one bounded transaction replay and the read-only
@@ -28,13 +34,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(ROOT / "src"))
 
 import e1_channel_run as cr  # noqa: E402
 import e1_config_actuator as ca  # noqa: E402
 import e1_existing_channel_pilot as pilot  # noqa: E402
+from fabric_perf.controllers import channel_selection as cs  # noqa: E402  (standard library only)
 
 
-CHANNELS = {"e1-r002": 45, "e1-cfg001": 40}
 DEFAULT_SERIES = ROOT / "data/processed/flashbots/series_2026-09-21_1s.csv.gz"
 DEFAULT_OUT = ROOT / "experiments/results/e1/synchronized_shadow_replay"
 DEFAULT_WORKSPACE = "/home/mailf18/e1/caliper-ws-benchmark"
@@ -260,6 +267,10 @@ def build_timeline(run_dir: Path, trace_rows: list[dict], summary: dict) -> tupl
 
     base = dt.datetime.fromisoformat(trace_rows[0]["timestamp_utc"])
     dispatch_start = min(float(r["dispatch_ms"]) for r in dispatch)
+    # The block size in force is the one fetched from the channel before the run (execute() refuses to start
+    # unless it equals that channel's verified baseline). It used to be the constant of e1-cfg001 whatever the
+    # channel, which would have labelled an e1-r002 run (B=45) as B=40 (2026-11-17, live-shadow fix 1).
+    block_size = summary["before"]["config"]["active_config"]["max_message_count"]
     snapshots: list[dict] = []
     history_counts: list[float] = []
     history_timestamps: list[str] = []
@@ -275,7 +286,7 @@ def build_timeline(run_dir: Path, trace_rows: list[dict], summary: dict) -> tupl
         history_counts.append(float(trace["arrival_count"]))
         history_timestamps.append(ts.isoformat())
         snapshots.append({"timestamp_utc": ts.isoformat(), "capture_timestamp_utc": epoch_to_utc_ms(end_ms),
-                          "current_config": {"max_message_count": CHANNELS["e1-cfg001"], "batch_timeout_ms": 2000,
+                          "current_config": {"max_message_count": block_size, "batch_timeout_ms": 2000,
                                               "preferred_max_bytes": PREFERRED_MAX_BYTES, "absolute_max_bytes": None, "orderers": 3},
                           "observed_arrival_rate_tps": float(trace["arrival_count"]),
                           "observed_throughput_tps": float(len(window_completed)),
@@ -334,7 +345,7 @@ def execute(args: argparse.Namespace, run_dir: Path, prepared: dict, trace_rows:
     before_cfg, cfg = pilot.fetch_config(net, args.channel, env, run_dir, "before_config")
     commands.extend(cfg.values())
     active = before_cfg["active_config"]
-    expected_b = CHANNELS[args.channel]
+    expected_b = args.expected_max_message_count
     if (active["max_message_count"], active["batch_timeout_ms"], active["preferred_max_bytes"], active["orderers"]) != \
             (expected_b, 2000, PREFERRED_MAX_BYTES, 3):
         raise RuntimeError(f"target channel configuration is not the verified baseline: {active}")
@@ -414,7 +425,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--series", type=Path, default=DEFAULT_SERIES)
     parser.add_argument("--network", type=Path, default=ROOT / "fabric-testbed/network/network-e1-recovery.json")
     parser.add_argument("--run-id", required=True)
-    parser.add_argument("--channel", choices=sorted(CHANNELS), default="e1-cfg001")
+    # Required, no default: a run never falls back to a protected reference channel (owner decision D1, 2026-11-17),
+    # and (task A0b) the two protected channels are refused outright. The expected block size is a separate input.
+    parser.add_argument("--channel", required=True, type=cs.experiment_channel_arg, metavar="CHANNEL",
+                        help="the dedicated validation channel")
+    parser.add_argument("--expected-max-message-count", required=True, type=int, metavar="B",
+                        help="the channel's BatchSize.MaxMessageCount; execute refuses to start if the fetched configuration differs")
     parser.add_argument("--start-bin", type=int, default=0)
     parser.add_argument("--duration-bins", type=int, default=30)
     parser.add_argument("--out-root", type=Path, default=DEFAULT_OUT)
@@ -422,6 +438,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--caliper-timeout-s", type=float, default=180.0)
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args(argv)
+    if args.expected_max_message_count < 1:
+        parser.error("--expected-max-message-count must be a positive integer")
     if not sys.platform.startswith("linux") and args.execute:
         parser.error("--execute must run inside Ubuntu WSL")
     if args.series.suffix != ".gz" or not args.series.is_file():
@@ -445,6 +463,8 @@ def main(argv: list[str] | None = None) -> int:
         run_dir.mkdir(parents=True)
         manifest = {"tool": "synchronized_shadow_replay 0.1", "mode": "prepared",
                     "run_id": args.run_id, "channel": args.channel, "live_configuration_submission": False,
+                    "channel_selection": cs.selection_record(args.channel, role=cs.ROLE_EXPERIMENT, option="--channel"),
+                    "expected_max_message_count": args.expected_max_message_count,
                     "configuration_updates": 0, "series": {"path": str(args.series), "sha256": sha256(args.series),
                     "start_bin": args.start_bin, "duration_bins": args.duration_bins, "rows": rows,
                     "transactions": len(schedule), "schedule_derivation": "uniform deterministic offsets within each 1-second bin"},
