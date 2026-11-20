@@ -20,14 +20,20 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parents[1] / "src"))
 
 import e1_benchmark_analyze as ba              
 import e1_config_actuator as ca              
 import e1_run_orchestrator as ro              
 
 
+from fabric_perf.controllers import channel_selection as cs  # noqa: E402  (standard library only)
+
 INFO_RE = re.compile(r"Blockchain info:\s*(\{.*\})")
-ALLOWED_CHANNELS = {"e1-r002", "e1-cfg001"}
+# Task A0b (2026-11-20): this runner no longer carries an allowlist of its own. It used to accept ONLY the two
+# protected reference channels. The channel is now named explicitly (--validation-channel, alias --channel), must
+# equal the channel the plan was rendered for, and is checked by fabric_perf.controllers.channel_selection, which
+# refuses the protected reference channels and the channels of earlier experiments. There is no default.
 
 
 def write_json(path: Path, value: dict) -> None:
@@ -82,6 +88,8 @@ def fetch_config(net, channel: str, env: dict[str, str], out_dir: Path, label: s
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "E1 existing-channel pilot command").splitlines()[0])
     ap.add_argument("--plan", required=True, type=Path)
+    ap.add_argument("--validation-channel", "--channel", dest="channel", required=True, type=cs.experiment_channel_arg,
+                    metavar="CHANNEL", help="the dedicated validation channel; must equal the channel in the plan")
     ap.add_argument("--run-dir", required=True, type=Path)
     ap.add_argument("--execute", action="store_true")
     ap.add_argument("--caliper-timeout-s", type=float, default=120.0)
@@ -89,8 +97,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--allow-duration", action="store_true", help="allow an explicitly rendered txDuration plan")
     args = ap.parse_args(argv)
     plan = ro.Plan(json.loads(args.plan.read_text(encoding="utf-8")))
-    if plan.request.channel not in ALLOWED_CHANNELS:
-        raise ValueError(f"pilot only permits existing verified channels: {sorted(ALLOWED_CHANNELS)}")
+    try:
+        cs.require_same_channel(args.channel, plan.request.channel, source="the plan file",
+                                purpose="the Caliper pilot run", option="--validation-channel")
+    except cs.ChannelSelectionError as exc:
+        ap.error(str(exc))
+    selection = cs.selection_record(args.channel, role=cs.ROLE_EXPERIMENT, option="--validation-channel")
     mode = plan.raw["cell"].get("mode", "txNumber")
     if mode == "txNumber" and plan.raw["cell"]["n"] != 60:
         raise ValueError("pilot arms must use exactly n=60")
@@ -99,7 +111,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.run_dir.exists():
         raise ValueError(f"refusing to overwrite {args.run_dir}")
     if not args.execute:
-        print(json.dumps({"mode": "dry-run", "channel": plan.request.channel, "run_id": plan.raw["run_id"],
+        print(json.dumps({"mode": "dry-run", "channel": plan.request.channel, "channel_selection": selection,
+                          "run_id": plan.raw["run_id"],
                           "n": plan.raw["cell"]["n"], "mode": mode,
                           "duration_s": plan.raw["cell"].get("duration_s"),
                           "rate_tps": plan.raw["cell"].get("rate_tps"),
@@ -118,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     result = {"tool": "e1_existing_channel_pilot 0.1", "run_id": plan.raw["run_id"],
               "channel": plan.request.channel, "cell": plan.raw["cell"], "bounded": {"n": plan.raw["cell"]["n"],
               "mode": mode, "duration_s": plan.raw["cell"].get("duration_s"),
-              "caliper_timeout_s": args.caliper_timeout_s, "allowed_channels": sorted(ALLOWED_CHANNELS)},
+              "caliper_timeout_s": args.caliper_timeout_s, "channel_selection": selection},
               "commands": commands, "channel_setup": "SKIPPED_READ_ONLY_EXISTING_CHANNEL"}
     try:
         before_height, rec = getinfo(net, plan.request.channel, env, run_dir, "before_getinfo")

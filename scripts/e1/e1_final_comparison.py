@@ -5,6 +5,12 @@ verified channels, records metrics/resources/logs around each Caliper run,
 refuses existing output directories, enforces the registered safety limits,
 and restores the original orderer logging specification in a finally block.
 It never creates channels or submits configuration updates.
+
+Task A0b (2026-11-20): this wrapper was written for the two protected reference channels (the 2026-11-10
+comparison). Those channels are no longer available for new live runs. Every plan's channel must pass
+``fabric_perf.controllers.channel_selection`` (a dedicated validation channel) before anything is created,
+toggled or contacted, and each run is started with an explicit ``--validation-channel``. The stored 2026-11-10
+evidence is unchanged.
 """
 from __future__ import annotations
 
@@ -20,7 +26,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ORDERERS = ("orderer.example.com", "orderer2.example.com", "orderer3.example.com")
+sys.path.insert(0, str(HERE.parents[1] / "src"))
+from fabric_perf.controllers import channel_selection as cs  # noqa: E402  (standard library only)
+
+ORDERERS =("orderer.example.com", "orderer2.example.com", "orderer3.example.com")
 OPS = (9443, 9446, 9447)
 PEERS = ("peer0.org1.example.com", "peer0.org2.example.com")
 CALIPER = "caliper-benchmark-001"
@@ -139,6 +148,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sampler-timeout-s", type=float, default=90.0)
     ap.add_argument("--summary", required=True, type=Path)
     args = ap.parse_args(argv)
+    # Task A0b: check every plan's channel before anything is created, toggled or contacted (set_all below changes
+    # the orderers' log specification, and the pilot would only refuse later).
+    for plan_path in args.plan:
+        try:
+            raw_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            cs.select_experiment_channel(raw_plan.get("channel"), purpose="a final-comparison run", option=f"plan {plan_path}")
+        except cs.ChannelSelectionError as exc:
+            ap.error(str(exc))
+        except (OSError, ValueError, AttributeError) as exc:
+            ap.error(f"cannot read plan {plan_path}: {exc}")
     if args.summary.exists():
         raise SystemExit(f"refusing to overwrite {args.summary}")
     args.run_root.mkdir(parents=True, exist_ok=True)
@@ -175,7 +194,8 @@ def main(argv: list[str] | None = None) -> int:
                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             runner_log = obs / "runner.log"
             runner_argv = [sys.executable, "-B", str(HERE / "e1_existing_channel_pilot.py"),
-                           "--plan", str(plan), "--run-dir", str(run_dir), "--execute", "--allow-duration",
+                           "--plan", str(plan), "--validation-channel", channel, "--run-dir", str(run_dir),
+                           "--execute", "--allow-duration",
                            "--caliper-container", args.caliper_container,
                            "--caliper-timeout-s", str(args.caliper_timeout_s)]
             with runner_log.open("x", encoding="utf-8") as fh:

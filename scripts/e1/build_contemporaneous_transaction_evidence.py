@@ -3,6 +3,16 @@
 Inputs are immutable recorder, submit-event, block-fetch observation and
 verified-ledger files. The output is a new audit artifact plus eligible
 telemetry frames; source files are never rewritten.
+
+The configuration every frame carries is never assumed. Version 1.0 wrote
+``max_message_count: 40`` into every frame regardless of the channel (true for
+``e1-cfg001``, false for ``e1-r002`` and for any dedicated validation channel).
+It now requires validated evidence: a decoded CONFIG block (``--config-block-json``,
+authoritative) or all five canonical fields given explicitly. Missing, partial,
+ambiguous, out-of-range or stale evidence is refused before anything is written,
+and the evidence's provenance is recorded in every frame. The value is Fabric
+``BatchSize.MaxMessageCount``; it is not asserted equal to the HFBTP Block Size
+feature (that mapping is a separate, explicit object in the controller code).
 """
 
 from __future__ import annotations
@@ -12,9 +22,16 @@ import csv
 import hashlib
 import json
 import math
+import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
+
+from fabric_perf.controllers import config_evidence as ce  # noqa: E402  (standard library only)
+from fabric_perf.controllers import channel_selection as cs  # noqa: E402  (standard library only)
 
 
 def sha256(path: Path) -> str:
@@ -60,7 +77,7 @@ def state_for(rec: dict[str, str] | None, ledger: dict[str, str] | None) -> str:
 def make_frame(*, run_id: str, channel: str, observation: datetime, config: dict,
                submits: list[dict[str, str]], records: list[dict[str, str]], ledger: list[dict[str, str]],
                block_observations: dict[int, datetime], previous_observation: datetime | None,
-               source_files: dict[str, str]) -> dict:
+               source_files: dict[str, str], config_provenance: dict | None = None) -> dict:
     visible_submits = [row for row in submits if datetime.fromtimestamp(float(row["t_submit_evt_ms"]) / 1000, timezone.utc) <= observation]
     visible_records = [row for row in records if row.get("final_ms") and datetime.fromtimestamp(float(row["final_ms"]) / 1000, timezone.utc) <= observation]
     visible_ledger = [row for row in ledger if block_observations.get(int(row["block"]), observation) <= observation]
@@ -114,28 +131,57 @@ def make_frame(*, run_id: str, channel: str, observation: datetime, config: dict
         "inconsistencies": [], "provenance": {"channel_id": channel, "source_files": source_files,
             "measurement_window_s": 5.0, "visible_submitted": submitted, "visible_completed": len(visible_records),
             "visible_ledger_rows": len(visible_ledger), "ledger_observation_is_not_commit_timestamp": True,
-            "ledger_interval_s": interval_s},
+            "ledger_interval_s": interval_s,
+            "configuration_source": None if config_provenance is None else dict(config_provenance)},
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--run-id", required=True)
-    ap.add_argument("--channel", required=True)
+    # Offline post-processor of recorded files: it can run nothing on a channel, so historical evidence (for example a
+    # run on a protected reference channel) can still be rebuilt. The name must be explicit and well formed (task A0b).
+    ap.add_argument("--channel", required=True, type=cs.observed_channel_arg, metavar="CHANNEL")
     ap.add_argument("--recorder-csv", type=Path, required=True)
     ap.add_argument("--submits-csv", type=Path, required=True)
     ap.add_argument("--manifest", type=Path, required=True)
     ap.add_argument("--ledger-tx", type=Path, required=True)
     ap.add_argument("--ledger-observations", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, required=True)
+    group = ap.add_argument_group(
+        "channel configuration evidence (required; no default block size is ever substituted)",
+        "Give --config-block-json, or all five explicit fields, or both (they must agree).")
+    group.add_argument("--config-block-json", type=Path,
+                       help="decoded CONFIG block of --channel (configtxlator proto_decode output); authoritative")
+    group.add_argument("--max-message-count", type=int, help="explicit BatchSize.MaxMessageCount")
+    group.add_argument("--batch-timeout-ms", type=int, help="explicit BatchTimeout in milliseconds")
+    group.add_argument("--preferred-max-bytes", type=int, help="explicit BatchSize.PreferredMaxBytes")
+    group.add_argument("--absolute-max-bytes", type=int, help="explicit BatchSize.AbsoluteMaxBytes")
+    group.add_argument("--orderers", type=int, help="explicit consenter count")
+    group.add_argument("--expect-max-message-count", type=int,
+                       help="optional operator assertion; the evidence must agree or the run is refused")
     args = ap.parse_args(argv)
     if args.out_dir.exists():
         raise SystemExit(f"refusing to overwrite {args.out_dir}")
     out = args.out_dir
-    out.mkdir(parents=True)
     recorder = read_csv(args.recorder_csv)
     submits = read_csv(args.submits_csv)
-    ledger = [row for row in read_csv(args.ledger_tx) if row.get("channel_id") == args.channel and row.get("header_type") == "3"]
+    ledger_all = [row for row in read_csv(args.ledger_tx) if row.get("channel_id") == args.channel]
+    ledger = [row for row in ledger_all if row.get("header_type") == "3"]
+    # Validate the configuration evidence before anything is written: a refused configuration leaves
+    # no output directory behind. CONFIG transactions inside the fetched range mean the configuration
+    # changed during the run, which one configuration cannot describe.
+    explicit = {name: getattr(args, name) for name in ce.CANONICAL_FIELDS if getattr(args, name) is not None} or None
+    try:
+        block, block_sha = ce.load_block_file(args.config_block_json) if args.config_block_json else (None, None)
+        evidence = ce.build_evidence(
+            channel=args.channel, block=block, block_path=args.config_block_json, block_sha256=block_sha,
+            explicit=explicit, expect_max_message_count=args.expect_max_message_count,
+            run_first_block=min((int(row["block"]) for row in ledger_all), default=None),
+            config_blocks_in_run=[int(row["block"]) for row in ledger_all if row.get("header_type") == "1"])
+    except (ce.ConfigEvidenceError, OSError) as exc:
+        ap.error(f"configuration evidence rejected: {exc}")
+    out.mkdir(parents=True)
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     observations = [json.loads(line) for line in args.ledger_observations.read_text(encoding="utf-8").splitlines() if line.strip()]
     block_observations = {int(row["block_number"]): parse_iso(row["observed_timestamp_utc"]) for row in observations if row.get("status") == "ok"}
@@ -173,8 +219,7 @@ def main(argv: list[str] | None = None) -> int:
             "ledger_observation_timestamp_utc": block_obs.get(block) if block is not None else None,
             "ledger_observation_semantics": "peer block fetch observation; not exact commit timestamp",
             "error": row.get("err") or None})
-    config = {"max_message_count": 40, "batch_timeout_ms": 2000, "batch_timeout": "2s", "preferred_max_bytes": 10485760,
-              "absolute_max_bytes": 103809024, "orderers": 3}
+    config = evidence.as_current_config()
     source_files = {key: {"path": str(path), "sha256": sha256(path)} for key, path in {
         "recorder_csv": args.recorder_csv, "submits_csv": args.submits_csv, "manifest": args.manifest, "ledger_tx": args.ledger_tx,
         "ledger_observations": args.ledger_observations}.items()}
@@ -184,7 +229,8 @@ def main(argv: list[str] | None = None) -> int:
     for index, (_, observation) in enumerate(ordered_obs):
         frame = make_frame(run_id=args.run_id, channel=args.channel, observation=observation, config=config,
                            submits=submits, records=recorder, ledger=ledger, block_observations=block_observations,
-                           previous_observation=previous, source_files={k: v["path"] for k, v in source_files.items()})
+                           previous_observation=previous, source_files={k: v["path"] for k, v in source_files.items()},
+                           config_provenance=evidence.provenance)
         frame["decision_index"] = index
         frame_rows.append(frame)
         previous = observation
@@ -193,8 +239,10 @@ def main(argv: list[str] | None = None) -> int:
     for index, row in enumerate(eligible):
         row["decision_index"] = index
     (out / "controller_frames.jsonl").write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in eligible), encoding="utf-8")
-    evidence = {"tool": "build_contemporaneous_transaction_evidence 1.0", "run_id": args.run_id, "channel": args.channel,
-        "configuration": config, "source_files": source_files, "counts": {"recorder_rows": len(recorder), "submit_events": len(submits),
+    summary = {"tool": "build_contemporaneous_transaction_evidence 1.1 (2026-11-17: configuration from validated evidence)",
+        "run_id": args.run_id, "channel": args.channel,
+        "configuration": config, "configuration_evidence": evidence.provenance,
+        "source_files": source_files, "counts": {"recorder_rows": len(recorder), "submit_events": len(submits),
             "ledger_rows": len(ledger), "joined_rows": len(joined), "contradictions": len(contradictions), "eligible_shadow_frames": len(eligible),
             "total_shadow_frames": len(frame_rows)}, "metrics": metrics,
         "independent_ledger_verification": {"block_observation_rows": len(observations), "blocks_ok": sum(row.get("status") == "ok" for row in observations),
@@ -207,7 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         "artifacts": {"transaction_evidence": str(out / "transaction_evidence.jsonl"), "controller_frames": str(out / "controller_frames.jsonl"),
                        "all_frames": str(out / "controller_frames_all.jsonl")}}
     (out / "transaction_evidence.jsonl").write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in tx_evidence), encoding="utf-8")
-    (out / "evidence_summary.json").write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (out / "evidence_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"run_id": args.run_id, "recorder_rows": len(recorder), "ledger_rows": len(ledger),
                       "ledger_coverage": metrics["ledger_verification_coverage"], "eligible_shadow_frames": len(eligible), "out_dir": str(out)}, indent=2))
     return 0 if not contradictions and len(joined) == len(recorder) else 2
