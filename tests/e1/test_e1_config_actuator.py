@@ -297,8 +297,13 @@ def test_config_update_submission_gateway_fails_closed_before_external_command(t
     assert "run_fabric_config_verifier.sh" in calls[0][1]
     assert "channel" not in calls[0] or "update" not in calls[0]
     source = (ROOT / "scripts/e1/e1_config_actuator.py").read_text(encoding="utf-8")
-    assert source.count('"channel", "update"') == 0
+    # 2026-11-22: exactly one broadcast call site, inside the owner-authorized _broadcast_config_update.
+    assert source.count('"channel", "update"') == 1
+    broadcast_fn = source.split("def _broadcast_config_update", 1)[1].split("\n    def ", 1)[0]
+    assert '"channel", "update"' in broadcast_fn
+    assert "self.broadcast_authorization is None" in broadcast_fn
     assert source.count("self._submit_config_update(") == 2
+    assert source.count("self._broadcast_config_update(") == 2
 
 
 def test_native_verification_success_still_cannot_broadcast_before_review(tmp_path, monkeypatch):

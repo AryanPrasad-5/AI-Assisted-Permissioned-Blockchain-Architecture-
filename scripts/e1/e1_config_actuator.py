@@ -44,6 +44,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from fabric_perf.controllers.base import FabricConfig, coerce_config
+from fabric_perf.controllers import channel_selection as channel_policy
 from fabric_perf.controllers.transition_fence import ChannelTransitionFence, FenceError
 from e1_config_transition import (              
     TransitionValidationError,
@@ -64,6 +65,117 @@ class ActuatorError(RuntimeError):
 
 class SafetyError(ActuatorError):
     pass
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Owner broadcast authorization (2026-11-22). Broadcast stays refused unless the owner writes this file. The file is
+# plain ASCII ``key=value`` lines (LF). Only the keys below are read here; other keys (for the closed-loop runner)
+# are ignored, but a malformed line, a duplicate key or a non-ASCII byte refuses the whole file.
+#   approved_by=owner
+#   approved_utc=YYYY-MM-DDTHH:MM:SSZ
+#   expires_utc=YYYY-MM-DDTHH:MM:SSZ
+#   broadcast_channels=<exact channel>,<exact channel>,...
+#   broadcast_targets=10,40
+#   native_verification=required|waived   (optional, default required). "waived" is the owner's explicit choice to skip
+#       the Go-based Fabric v2.5.16 envelope verifier (needs a Fabric source checkout and Go in WSL) and use the path
+#       proven on e1-cfg001 on 2026-11-10. The computed read/write-set checks, the transition fence and the post-commit
+#       independent verification still run.
+BROADCAST_AUTH_REQUIRED = ("approved_by", "approved_utc", "expires_utc", "broadcast_channels", "broadcast_targets")
+
+
+def parse_owner_kv(raw: bytes) -> dict[str, str]:
+    """Strict parser shared with the closed-loop runner: printable ASCII, LF only, one key=value per line, no duplicates."""
+    if b"\r" in raw:
+        raise SafetyError("authorization file must use LF line endings only")
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError as exc:
+        raise SafetyError("authorization file must be ASCII") from exc
+    out: dict[str, str] = {}
+    for number, line in enumerate(text.split("\n"), 1):
+        if not line or line.startswith("#"):
+            continue
+        if any(not (32 <= ord(ch) < 127) for ch in line):
+            raise SafetyError(f"authorization line {number} has a non-printable character")
+        key, sep, value = line.partition("=")
+        if not sep or not key or key != key.strip() or value != value.strip() or not value:
+            raise SafetyError(f"authorization line {number} is not key=value without spaces")
+        if key in out:
+            raise SafetyError(f"authorization key {key!r} appears twice")
+        out[key] = value
+    return out
+
+
+def _parse_utc_z(name: str, text: str) -> dt.datetime:
+    if len(text) != 20 or not text.endswith("Z"):
+        raise SafetyError(f"{name} must be YYYY-MM-DDTHH:MM:SSZ")
+    try:
+        return dt.datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+    except ValueError as exc:
+        raise SafetyError(f"{name} must be YYYY-MM-DDTHH:MM:SSZ") from exc
+
+
+@dataclass(frozen=True)
+class BroadcastAuthorization:
+    path: str
+    sha256: str
+    approved_utc: str
+    expires_utc: str
+    channels: tuple[str, ...]
+    targets: tuple[int, ...]
+    native_verification: str = "required"
+
+    @classmethod
+    def load(cls, path: Path, *, now: dt.datetime | None = None) -> "BroadcastAuthorization":
+        raw = Path(path).read_bytes()
+        kv = parse_owner_kv(raw)
+        missing = [k for k in BROADCAST_AUTH_REQUIRED if k not in kv]
+        if missing:
+            raise SafetyError(f"broadcast authorization lacks {missing}")
+        if kv["approved_by"] != "owner":
+            raise SafetyError("broadcast authorization must say approved_by=owner")
+        approved = _parse_utc_z("approved_utc", kv["approved_utc"])
+        expires = _parse_utc_z("expires_utc", kv["expires_utc"])
+        if expires <= approved:
+            raise SafetyError("broadcast authorization expires before it was approved")
+        current = now or dt.datetime.now(dt.timezone.utc)
+        if current >= expires:
+            raise SafetyError("broadcast authorization has expired")
+        if current < approved:
+            raise SafetyError("broadcast authorization is dated in the future")
+        channels = tuple(c for c in kv["broadcast_channels"].split(","))
+        if not channels or any(not c.startswith("e1-") or len(c) > 49 or not all(ch.isalnum() or ch in "-._" for ch in c) for c in channels):
+            raise SafetyError("broadcast_channels must list exact e1-* channel names")
+        if len(set(channels)) != len(channels):
+            raise SafetyError("broadcast_channels lists a channel twice")
+        for c in channels:  # 2026-11-22 preflight: protected reference and historical channels are never broadcast targets
+            try:
+                channel_policy.select_experiment_channel(c, purpose="a live configuration broadcast", option="broadcast_channels")
+            except channel_policy.ChannelSelectionError as exc:
+                raise SafetyError(f"broadcast_channels: {exc}") from exc
+        try:
+            targets = tuple(int(t) for t in kv["broadcast_targets"].split(","))
+        except ValueError as exc:
+            raise SafetyError("broadcast_targets must be integers") from exc
+        if not targets or any(not DEFAULT_MIN_B <= t <= DEFAULT_MAX_B for t in targets):
+            raise SafetyError("broadcast_targets outside the allowed MaxMessageCount range")
+        native = kv.get("native_verification", "required")
+        if native not in ("required", "waived"):
+            raise SafetyError("native_verification must be required or waived")
+        return cls(str(path), hashlib.sha256(raw).hexdigest(), kv["approved_utc"], kv["expires_utc"], channels, targets, native)
+
+    def require(self, channel: str, target_b: int, *, now: dt.datetime | None = None) -> None:
+        current = now or dt.datetime.now(dt.timezone.utc)
+        if current >= _parse_utc_z("expires_utc", self.expires_utc):
+            raise SafetyError("broadcast authorization has expired")
+        if channel not in self.channels:
+            raise SafetyError(f"broadcast authorization does not cover channel {channel}")
+        if target_b not in self.targets:
+            raise SafetyError(f"broadcast authorization does not cover MaxMessageCount {target_b}")
+
+    def as_dict(self) -> dict:
+        return {"path": self.path, "sha256": self.sha256, "approved_utc": self.approved_utc, "expires_utc": self.expires_utc,
+                "channels": list(self.channels), "targets": list(self.targets), "native_verification": self.native_verification}
 
 
 def utc_now() -> str:
@@ -334,6 +446,7 @@ class FabricChannelConfigActuator:
         fence_dir: Path | None = None,
         independent_verifier: Callable[[str, dict, FabricConfig, dict], dict] | None = None,
         live_enabled: bool = False,
+        broadcast_authorization: "BroadcastAuthorization | None" = None,
     ):
         if min_b < 1 or max_b < min_b:
             raise SafetyError("invalid allowed MaxMessageCount range")
@@ -363,6 +476,11 @@ class FabricChannelConfigActuator:
         self.live_enabled = live_enabled
         if live_enabled and not isinstance(independent_verifier, IndependentFabricConfigVerifier):
             raise SafetyError("live execution requires the concrete IndependentFabricConfigVerifier")
+        if broadcast_authorization is not None and not isinstance(broadcast_authorization, BroadcastAuthorization):
+            raise SafetyError("broadcast authorization must be a parsed BroadcastAuthorization")
+        if broadcast_authorization is not None and channel not in broadcast_authorization.channels:
+            raise SafetyError(f"broadcast authorization does not cover channel {channel}")
+        self.broadcast_authorization = broadcast_authorization
         self._last_active: FabricConfig | None = None
 
     def _env(self) -> dict[str, str]:
@@ -431,6 +549,14 @@ class FabricChannelConfigActuator:
         """
         repo = Path(__file__).resolve().parents[2]
         verifier_script = repo / "scripts" / "e1" / "run_fabric_config_verifier.sh"
+        if self.broadcast_authorization is not None and self.broadcast_authorization.native_verification == "waived":
+            # Owner-waived native envelope verification (see BroadcastAuthorization). Nothing is signed offline here; the
+            # one `peer channel update` signs as OrdererMSP admin exactly as on e1-cfg001 (2026-11-10).
+            self.broadcast_authorization.require(self.channel, target.max_message_count)
+            _write_new(work / "broadcast_authorization.json", {**self.broadcast_authorization.as_dict(),
+                                                               "native_envelope_verification": "WAIVED_BY_OWNER",
+                                                               "envelope_sha256": sha256(envelope_path), "checked_utc": utc_now()})
+            return
 
         def run_inspection(path: Path, label: str) -> dict:
             command_index = len(commands)
@@ -492,9 +618,28 @@ class FabricChannelConfigActuator:
             raise SafetyError("native Fabric verifier did not establish exact v2.5.16 envelope validity")
         if evidence.get("config_update_sha256") != before_sign.get("config_update_sha256"):
             raise SafetyError("verified ConfigUpdate bytes differ from the exact offline-signed payload")
-        raise SafetyError(
-            "offline Fabric-native signing and verification passed; live configuration submission remains disabled"
-        )
+        if self.broadcast_authorization is None:
+            raise SafetyError(
+                "offline Fabric-native signing and verification passed; live configuration submission remains disabled"
+            )
+        # Owner-authorized path: verification passed; the caller marks the fence SUBMITTING and then broadcasts.
+        self.broadcast_authorization.require(self.channel, target.max_message_count)
+        _write_new(work / "broadcast_authorization.json", {**self.broadcast_authorization.as_dict(),
+                                                           "config_update_sha256": before_sign.get("config_update_sha256"),
+                                                           "checked_utc": utc_now()})
+
+    def _broadcast_config_update(self, label: str, envelope_path: Path, target: FabricConfig, work: Path,
+                                 commands: list[CommandRecord]) -> dict:
+        """The one ``peer channel update`` (the argv proven on e1-cfg001, 2026-11-10). Only after _submit_config_update
+        returned, i.e. native verification passed and the owner's authorization covers this channel and target."""
+        if self.broadcast_authorization is None:
+            raise SafetyError("live configuration submission remains disabled (no owner broadcast authorization)")
+        self._require_live_verifier()
+        self.broadcast_authorization.require(self.channel, target.max_message_count)
+        self._run(label, [str(self.peer_bin), "channel", "update", "-f", str(envelope_path), "-c", self.channel,
+                          "-o", self.orderer_address, "--ordererTLSHostnameOverride", self.orderer_tls_hostname,
+                          "--tls", "--cafile", str(self.orderer_ca)], work, commands)
+        return {"command": "peer channel update", "exit_code": 0, "label": label}
 
     def _verify_and_reconcile(self, transition_id: str, before_block: dict, target: FabricConfig,
                               observed_block: dict) -> dict:
@@ -845,12 +990,13 @@ class FabricChannelConfigActuator:
                 self._submit_config_update("submit_prepared_update",
                                            Path(prepared_dir) / "config_update_in_envelope.pb",
                                            work / "before.pb", target, work, commands)
-                raise SafetyError("configuration broadcast is not implemented; refusing to mark the transition submitted")
                 submit_start = utc_now()
                 submit_start_mono = time.monotonic()
                 record.submission_start_timestamp_utc = submit_start
                 self.transition_fence.mark_submitting(work.name)
-                self.transition_fence.mark_submission_acknowledged(work.name, {"command": "peer channel update", "exit_code": 0})
+                ack = self._broadcast_config_update("broadcast_prepared_update", Path(prepared_dir) / "config_update_in_envelope.pb",
+                                                    target, work, commands)
+                self.transition_fence.mark_submission_acknowledged(work.name, ack)
                 record.submission_completion_timestamp_utc = utc_now()
                 record.submission_timestamp_utc = record.submission_completion_timestamp_utc
                 record.submission_duration_ms = (time.monotonic() - submit_start_mono) * 1000
@@ -947,12 +1093,12 @@ class FabricChannelConfigActuator:
                     "attempt_artifacts_dir": str(work),
                 })
                 self._submit_config_update("submit_update", envelope_pb, work / "before.pb", target, work, commands)
-                raise SafetyError("configuration broadcast is not implemented; refusing to mark the transition submitted")
                 submit_start = utc_now()
                 submit_start_mono = time.monotonic()
                 record.submission_start_timestamp_utc = submit_start
                 self.transition_fence.mark_submitting(work.name)
-                self.transition_fence.mark_submission_acknowledged(work.name, {"command": "peer channel update", "exit_code": 0})
+                ack = self._broadcast_config_update("broadcast_update", envelope_pb, target, work, commands)
+                self.transition_fence.mark_submission_acknowledged(work.name, ack)
                 record.submission_completion_timestamp_utc = utc_now()
                 record.submission_timestamp_utc = record.submission_completion_timestamp_utc
                 record.submission_duration_ms = (time.monotonic() - submit_start_mono) * 1000
@@ -1015,6 +1161,12 @@ def actuator_from_args(args: argparse.Namespace) -> FabricChannelConfigActuator:
             orderer_ca=Path(network["orderer_ca"]),
             output_dir=Path(args.out_dir) / "independent-verification",
         )
+    authorization = None
+    auth_path = getattr(args, "broadcast_authorization", None)
+    if auth_path is not None:
+        if not live_enabled:
+            raise SafetyError("--broadcast-authorization is only accepted with a live --execute command")
+        authorization = BroadcastAuthorization.load(Path(auth_path))
     return FabricChannelConfigActuator(
         channel=args.channel,
         peer_bin=Path(network["bin_dir"]) / "peer",
@@ -1030,6 +1182,8 @@ def actuator_from_args(args: argparse.Namespace) -> FabricChannelConfigActuator:
         live_enabled=live_enabled,
         min_b=args.min_b, max_b=args.max_b, cooldown_s=args.cooldown_s,
         poll_s=args.poll_s, commit_timeout_s=args.commit_timeout_s,
+        command_timeout_s=getattr(args, "command_timeout_s", 30.0),
+        broadcast_authorization=authorization,
     )
 
 
@@ -1045,6 +1199,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--cooldown-s", type=float, default=30.0)
     p.add_argument("--poll-s", type=float, default=1.0)
     p.add_argument("--commit-timeout-s", type=float, default=60.0)
+    p.add_argument("--command-timeout-s", type=float, default=30.0,
+                   help="per external command (the native verifier is a `go run`; allow for a cold build cache)")
+    p.add_argument("--broadcast-authorization", type=Path,
+                   help="owner-written authorization file; without it live submission stays disabled")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("inspect")
     prepare = sub.add_parser("prepare")
