@@ -1,0 +1,8 @@
+node_modules/
+dist/
+scripts/out/
+*.log
+
+# the root ignore file excludes every lib/ directory; this one is source code
+!src/lib/
+!src/lib/**

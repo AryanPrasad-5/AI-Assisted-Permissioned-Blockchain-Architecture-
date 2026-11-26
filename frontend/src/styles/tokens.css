@@ -1,0 +1,144 @@
+/* Cutpoint design tokens.
+   Palette roles: paper (surface), ink (text), rule (structure), signal (interaction only).
+   Data colours are separate from the interface accent so that no series inherits "brand" emphasis.
+   Chart palettes validated with the dataviz validator (light surface #F5F6F3, dark surface #141B22):
+   controllers all-pairs PASS both modes; block-size ramp ordinal PASS both modes. */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --paper: #f5f6f3;
+  --paper-raised: #fbfbfa;
+  --paper-sunk: #eceee9;
+  --paper-tint: #e7eaf6; /* model-output wash */
+
+  /* Ink */
+  --ink: #18222d;
+  --ink-2: #3d4752;
+  --ink-3: #5a6672;
+  --ink-4: #7a848e; /* decorative only, never body text */
+
+  /* Structure */
+  --rule: #d5dad4;
+  --rule-strong: #b9c0b8;
+
+  /* Interaction */
+  --signal: #2d3fb0;
+  --signal-hover: #22318e;
+  --signal-wash: #e7eaf6;
+  --focus: #2d3fb0;
+
+  /* Evidence classes (text + border; always paired with an icon and a label) */
+  --ev-measured: #18222d;
+  --ev-model: #2d3fb0;
+  --ev-historical: #4c5a3e;
+  --ev-illustrative: #6b5a2e;
+  --ev-unavailable: #5f6a74;
+
+  /* Status (reserved; never used as series colours) */
+  --ok: #1f7a3a;
+  --warn: #9a6200;
+  --bad: #b3261e;
+  --warn-wash: #fbf1dc;
+  --bad-wash: #fbe9e7;
+
+  /* Data: controllers (identity) */
+  --c-static: #6a4ce2;
+  --c-reactive: #c8571a;
+  --c-predictive: #00876b;
+  --c-reference: #7a848e;
+
+  /* Data: block size (ordinal, light -> dark = smaller -> larger) */
+  --b-2: #6aabf1;
+  --b-5: #338ced;
+  --b-10: #1b64be;
+  --b-40: #0e3d7e;
+
+  /* Data: neutral series */
+  --d-actual: #18222d;
+  --d-grid: #e2e6e0;
+  --d-axis: #b9c0b8;
+  --d-band: rgba(45, 63, 176, 0.07);
+
+  /* Sequential (HFBTP heat maps), one hue */
+  --seq-0: #e8f1fd;
+  --seq-1: #b6d5f8;
+  --seq-2: #6aabf1;
+  --seq-3: #257de0;
+  --seq-4: #1757ac;
+  --seq-5: #0e3d7e;
+
+  /* Type */
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-read: "IBM Plex Serif", Georgia, serif;
+  --font-code: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Type scale: 1.2 minor-third from 16px, display steps by perfect fourth */
+  --t-xs: 0.75rem;   /* 12 */
+  --t-sm: 0.875rem;  /* 14 */
+  --t-md: 1rem;      /* 16 */
+  --t-lg: 1.125rem;  /* 18 */
+  --t-xl: 1.375rem;  /* 22 */
+  --t-2xl: 1.75rem;  /* 28 */
+  --t-3xl: 2.375rem; /* 38 */
+  --t-4xl: 3.25rem;  /* 52 */
+  --t-5xl: 4.25rem;  /* 68 */
+
+  /* Space: 4px base */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px;
+  --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px; --s-10: 128px;
+
+  /* Radius: by role, not uniform */
+  --r-control: 6px;
+  --r-mark: 3px;
+  --r-panel: 4px;
+
+  /* Elevation: only for floating layers */
+  --shadow-float: 0 1px 2px rgba(24, 34, 45, 0.08), 0 8px 24px rgba(24, 34, 45, 0.12);
+
+  /* Layout */
+  --measure: 68ch;
+  --content: 1200px;
+  --gutter: clamp(16px, 4vw, 64px);
+  --nav-w: 248px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 480ms;
+}
+
+/* Dark: its own steps, validated against #141B22 (not an automatic inversion). */
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --paper: #141b22; --paper-raised: #19212a; --paper-sunk: #10161c; --paper-tint: #1c2340;
+    --ink: #e4e8ec; --ink-2: #c3cad1; --ink-3: #9aa4ae; --ink-4: #6f7a85;
+    --rule: #2a343e; --rule-strong: #3b4752;
+    --signal: #9aa8ff; --signal-hover: #b8c2ff; --signal-wash: #1f2647; --focus: #9aa8ff;
+    --ev-measured: #e4e8ec; --ev-model: #9aa8ff; --ev-historical: #b5c49a; --ev-illustrative: #d9c48c; --ev-unavailable: #8a95a0;
+    --ok: #5cc47a; --warn: #e3a93b; --bad: #f07b72; --warn-wash: #2c2412; --bad-wash: #2e1a18;
+    --c-static: #9887ef; --c-reactive: #e76624; --c-predictive: #00a888; --c-reference: #8a95a0;
+    --b-2: #9dc8f7; --b-5: #519ced; --b-10: #2370cd; --b-40: #1757ac;
+    --d-actual: #e4e8ec; --d-grid: #222b34; --d-axis: #3b4752; --d-band: rgba(154, 168, 255, 0.08);
+    --seq-0: #18263a; --seq-1: #1757ac; --seq-2: #2370cd; --seq-3: #519ced; --seq-4: #9dc8f7; --seq-5: #d9e9fc;
+    --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #141b22; --paper-raised: #19212a; --paper-sunk: #10161c; --paper-tint: #1c2340;
+  --ink: #e4e8ec; --ink-2: #c3cad1; --ink-3: #9aa4ae; --ink-4: #6f7a85;
+  --rule: #2a343e; --rule-strong: #3b4752;
+  --signal: #9aa8ff; --signal-hover: #b8c2ff; --signal-wash: #1f2647; --focus: #9aa8ff;
+  --ev-measured: #e4e8ec; --ev-model: #9aa8ff; --ev-historical: #b5c49a; --ev-illustrative: #d9c48c; --ev-unavailable: #8a95a0;
+  --ok: #5cc47a; --warn: #e3a93b; --bad: #f07b72; --warn-wash: #2c2412; --bad-wash: #2e1a18;
+  --c-static: #9887ef; --c-reactive: #e76624; --c-predictive: #00a888; --c-reference: #8a95a0;
+  --b-2: #9dc8f7; --b-5: #519ced; --b-10: #2370cd; --b-40: #1757ac;
+  --d-actual: #e4e8ec; --d-grid: #222b34; --d-axis: #3b4752; --d-band: rgba(154, 168, 255, 0.08);
+  --seq-0: #18263a; --seq-1: #1757ac; --seq-2: #2370cd; --seq-3: #519ced; --seq-4: #9dc8f7; --seq-5: #d9e9fc;
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+}

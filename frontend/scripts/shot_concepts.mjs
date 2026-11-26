@@ -1,0 +1,12 @@
+import { chromium } from "playwright-core";
+import { pathToFileURL } from "node:url";
+import path from "node:path";
+const exe = "C:/Program Files/Google/Chrome/Application/chrome.exe";
+const out = process.argv[2];
+const browser = await chromium.launch({ executablePath: exe });
+const page = await browser.newPage({ viewport: { width: 1720, height: 900 }, deviceScaleFactor: 1 });
+await page.goto(pathToFileURL(path.resolve("concepts/directions.html")).href);
+await page.evaluate(() => document.fonts.ready);
+await page.screenshot({ path: out, fullPage: true });
+await browser.close();
+console.log("saved", out);
