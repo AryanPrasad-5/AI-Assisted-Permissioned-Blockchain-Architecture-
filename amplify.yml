@@ -1,0 +1,22 @@
+# AWS Amplify Hosting build spec. The web app lives in frontend/; everything else in the
+# repository is research code and is not published.
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - cd frontend
+        - nvm install 22
+        - nvm use 22
+        - npm ci
+    build:
+      commands:
+        - npm run test
+        - npm run build
+  artifacts:
+    baseDirectory: frontend/dist
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - frontend/node_modules/**/*

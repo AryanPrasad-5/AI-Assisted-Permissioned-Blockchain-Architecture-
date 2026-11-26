@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/spa-routes.mjs",
     "preview": "vite preview --port 4173",
     "test": "vitest run",
     "shots": "node scripts/screenshots.mjs"
