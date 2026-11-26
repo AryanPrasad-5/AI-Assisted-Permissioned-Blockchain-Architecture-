@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design directions</title>
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans/600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans-condensed/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans-condensed/600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-serif/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/500.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "IBM Plex Sans", sans-serif; background: #e9ebe8; color: #18222d; padding: 32px; }
+  h1 { font: 600 28px/1.2 "IBM Plex Sans Condensed"; margin-bottom: 6px; }
+  .lede { max-width: 70ch; color: #4a5560; margin-bottom: 28px; }
+  .dir { margin-bottom: 44px; }
+  .dir > h2 { font: 600 20px/1.2 "IBM Plex Sans Condensed"; }
+  .dir > p { color: #4a5560; max-width: 90ch; margin: 4px 0 14px; font-size: 14px; }
+  .row { display: flex; gap: 18px; }
+  .frame { width: 538px; height: 336px; overflow: hidden; border-radius: 6px; box-shadow: 0 1px 0 #c9cec8, 0 0 0 1px #cfd4ce; position: relative; }
+  .frame > .screen { width: 1280px; height: 800px; transform: scale(0.42); transform-origin: 0 0; position: absolute; }
+  .cap { font-size: 12px; color: #5a6672; margin-top: 6px; }
+
+  /* ---------- A: Console ---------- */
+  .A { background: #1b1d21; color: #e6e8eb; font-family: "IBM Plex Sans"; }
+  .A .nav { height: 56px; display: flex; align-items: center; gap: 28px; padding: 0 40px; border-bottom: 1px solid #2b2e34; font-size: 15px; color: #9aa0a8; }
+  .A .nav b { color: #e6e8eb; font-weight: 600; margin-right: 24px; }
+  .A .hero { padding: 120px 40px 0; max-width: 900px; }
+  .A .hero h3 { font: 600 64px/1.05 "IBM Plex Sans"; letter-spacing: -0.03em; }
+  .A .hero p { font-size: 20px; color: #9aa0a8; margin: 22px 0 30px; max-width: 640px; }
+  .A .btn { display: inline-block; background: #e6e8eb; color: #1b1d21; padding: 12px 20px; border-radius: 8px; font-weight: 500; }
+  .A .side { position: absolute; left: 0; top: 0; bottom: 0; width: 230px; background: #17191c; border-right: 1px solid #2b2e34; padding: 24px 18px; font-size: 14px; color: #9aa0a8; line-height: 2.3; }
+  .A .main { margin-left: 230px; padding: 32px 40px; }
+  .A .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 22px 0; }
+  .A .kpi { background: #23262b; border: 1px solid #2f3238; border-radius: 10px; padding: 18px; }
+  .A .kpi span { font-size: 13px; color: #8b9099; } .A .kpi div { font-size: 34px; font-weight: 600; margin-top: 6px; }
+  .A .panel { background: #23262b; border: 1px solid #2f3238; border-radius: 10px; padding: 20px; height: 380px; }
+  .A .panel svg { width: 100%; height: 300px; }
+
+  /* ---------- B: Lab report ---------- */
+  .B { background: #f5f6f3; color: #18222d; }
+  .B .nav { height: 64px; display: flex; align-items: center; gap: 30px; padding: 0 64px; font-size: 15px; color: #3d4752; border-bottom: 1px solid #d5dad4; }
+  .B .nav b { font: 600 20px "IBM Plex Sans Condensed"; color: #18222d; margin-right: auto; }
+  .B .hero { display: grid; grid-template-columns: 560px 1fr; gap: 56px; padding: 70px 64px 0; }
+  .B .hero h3 { font: 600 60px/1.04 "IBM Plex Sans Condensed"; letter-spacing: -0.01em; }
+  .B .hero p { font: 400 19px/1.6 "IBM Plex Serif"; color: #3d4752; margin: 24px 0; }
+  .B .ledger { display: grid; grid-template-columns: 110px repeat(10, 1fr); gap: 4px; font-size: 13px; align-items: center; }
+  .B .ledger .c { height: 34px; border-radius: 3px; display: grid; place-items: center; font: 500 14px "IBM Plex Sans"; color: #fff; }
+  .B .ledger .l { color: #5a6672; }
+  .B .b2 { background: #338ced; } .B .b10 { background: #0e3d7e; }
+  .B .fig { font-size: 13px; color: #5a6672; margin-top: 12px; border-top: 1px solid #d5dad4; padding-top: 10px; }
+  .B .btn { display: inline-block; background: #2d3fb0; color: #fff; padding: 12px 20px; border-radius: 6px; font-weight: 500; }
+  .B .doc { display: grid; grid-template-columns: 220px 1fr 260px; gap: 40px; padding: 40px 64px; }
+  .B .toc { font-size: 14px; line-height: 2.2; color: #3d4752; border-right: 1px solid #d5dad4; }
+  .B .margin { font-size: 13px; color: #5a6672; border-left: 2px solid #18222d; padding-left: 12px; line-height: 1.6; }
+  .B .badge { display: inline-flex; gap: 6px; align-items: center; border: 1px solid #18222d; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 500; }
+  .B .badge.model { border-color: #2d3fb0; color: #2d3fb0; border-style: solid; background: #eef0fb; }
+  .B .stat { font: 600 44px "IBM Plex Sans Condensed"; }
+  .B table { border-collapse: collapse; font-size: 15px; width: 100%; margin-top: 16px; }
+  .B td, .B th { text-align: right; padding: 8px 10px; border-bottom: 1px solid #dfe3de; font-variant-numeric: tabular-nums; }
+  .B th:first-child, .B td:first-child { text-align: left; }
+  .B input[type=range] { width: 100%; }
+
+  /* ---------- C: Observatory ---------- */
+  .C { background: #0c1626; color: #d8e6f2; font-family: "IBM Plex Mono"; }
+  .C .nav { height: 56px; display: flex; align-items: center; gap: 24px; padding: 0 40px; font-size: 14px; color: #6f8aa6; border-bottom: 1px solid #1a2b44; }
+  .C .nav b { color: #4fd6e6; margin-right: 24px; }
+  .C .hero { padding: 80px 40px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .C .hero h3 { font: 500 50px/1.1 "IBM Plex Mono"; letter-spacing: -0.02em; }
+  .C .hero p { font-size: 17px; color: #8aa3bb; margin: 22px 0 28px; line-height: 1.6; }
+  .C .btn { display: inline-block; border: 1px solid #4fd6e6; color: #4fd6e6; padding: 12px 20px; border-radius: 4px; box-shadow: 0 0 24px #4fd6e655; }
+  .C .graph { height: 520px; background: radial-gradient(circle at 50% 50%, #12304d, #0c1626 70%); border: 1px solid #1a2b44; border-radius: 8px; position: relative; }
+  .C .node { position: absolute; width: 120px; padding: 10px; border: 1px solid #2c5a80; border-radius: 6px; font-size: 12px; background: #0f2238; box-shadow: 0 0 18px #4fd6e633; }
+  .C .grid2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 30px 40px; }
+  .C .tile { border: 1px solid #1a2b44; border-radius: 8px; padding: 18px; background: #0f1d31; height: 240px; }
+  .C .tile div { font-size: 38px; color: #4fd6e6; margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>Three design directions</h1>
+<p class="lede">Each direction is drawn on the same three screens with real numbers from the M2, X1 and Phase 1C records. Rendered at 1280&times;800, shown at 42%. The miniature charts are composition sketches only; the prototype draws them from data.</p>
+
+<!-- ================= A ================= -->
+<section class="dir">
+  <h2>A. Console: enterprise research intelligence</h2>
+  <p>Graphite dark UI, one cool accent, sidebar workspace, KPI tiles, dense panels. Plex Sans at tight tracking. Strong for a tool people use daily; weak at telling a story with a null result, because the KPI-tile pattern makes four equal numbers look like a scoreboard.</p>
+  <div class="row">
+    <div><div class="frame"><div class="screen A">
+      <div class="nav"><b>Cutpoint</b>Overview<span>Experiments</span><span>Models</span><span>Docs</span></div>
+      <div class="hero"><h3>Adaptive block-size control for Hyperledger Fabric.</h3>
+      <p>Static, reactive and predictive controllers compared live on one testbed, with pre-registered rules.</p>
+      <span class="btn">Explore the research</span></div>
+    </div></div><div class="cap">Landing</div></div>
+    <div><div class="frame"><div class="screen A">
+      <div class="side"><b style="color:#e6e8eb">Cutpoint</b><br>Overview<br>Architecture<br>Datasets<br>Models<br>Forecasting<br>Prediction<br>Controllers<br>Experiments<br>Docs</div>
+      <div class="main"><div style="font-size:24px;font-weight:600">Research overview</div>
+        <div class="kpis"><div class="kpi"><span>Measured transactions</span><div>190,704</div></div><div class="kpi"><span>Failed</span><div>0</div></div><div class="kpi"><span>Static p95</span><div>82.3 ms</div></div><div class="kpi"><span>Predictive p95</span><div>81.3 ms</div></div></div>
+        <div class="panel"><span style="color:#8b9099;font-size:13px">p95 latency by arm</span><svg viewBox="0 0 800 300"><g fill="#7c8cff"><rect x="80" y="70" width="120" height="230" rx="4"/><rect x="300" y="62" width="120" height="238" rx="4"/><rect x="520" y="72" width="120" height="228" rx="4"/></g></svg></div>
+      </div>
+    </div></div><div class="cap">Research overview</div></div>
+    <div><div class="frame"><div class="screen A">
+      <div class="side"><b style="color:#e6e8eb">Cutpoint</b><br>Overview<br>Architecture<br>Datasets<br>Models<br>Forecasting<br><span style="color:#e6e8eb">Prediction</span><br>Controllers</div>
+      <div class="main"><div style="font-size:24px;font-weight:600">Prediction studio</div>
+        <div class="kpis" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><span>Arrival rate</span><div>100 tx/s</div></div><div class="kpi"><span>Predicted throughput</span><div>98.3</div></div><div class="kpi"><span>Predicted latency</span><div>0.73 s</div></div></div>
+        <div class="panel"><svg viewBox="0 0 800 300"><path d="M20 280 C200 260 300 120 500 60 S760 40 780 40" stroke="#7c8cff" stroke-width="3" fill="none"/></svg></div></div>
+    </div></div><div class="cap">Prediction Studio</div></div>
+  </div>
+</section>
+
+<!-- ================= B ================= -->
+<section class="dir">
+  <h2>B. Lab report: scientific research laboratory</h2>
+  <p>Cool report paper, slate ink, one ultramarine for interaction. Condensed Plex headlines, Plex Serif for reading. Every figure carries a caption and a provenance margin (source file, evidence class). The hero is the data itself: the ledger of all 120 M2 decisions, where every compared cell reads B = 2.</p>
+  <div class="row">
+    <div><div class="frame"><div class="screen B">
+      <div class="nav"><b>Cutpoint</b><span>Research</span><span>Experiments</span><span>Paper</span><span>Source</span></div>
+      <div class="hero"><div><h3>Three controllers made 90 decisions. Every one chose B&nbsp;=&nbsp;2.</h3>
+        <p>We compared static, reactive and predictive block-size control live on Hyperledger Fabric. They tied, and the constant-rate scans show why: there was no decision to make.</p>
+        <span class="btn">Explore the research</span></div>
+        <div><div class="ledger">
+          <span class="l">Static B=2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span>
+          <span class="l">Static B=2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span>
+          <span class="l">Reactive</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span>
+          <span class="l">Reactive</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span>
+          <span class="l">Predictive</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span>
+          <span class="l">Predictive</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span><span class="c b2">2</span>
+          <span class="l">Static B=10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span><span class="c b10">10</span>
+        </div><div class="fig">Fig. 1. Block size in force at each 60-s decision, M2 runs (measured, ledger-verified).</div></div></div>
+    </div></div><div class="cap">Landing (the hero is the evidence)</div></div>
+    <div><div class="frame"><div class="screen B">
+      <div class="nav"><b>Cutpoint</b><span>Overview</span><span>Architecture</span><span>Data</span><span>Models</span><span>Controllers</span><span>Experiments</span></div>
+      <div class="doc"><div class="toc">Summary<br>What we measured<br>Findings<br>Why they tied<br>Limitations</div>
+        <div><div style="font:600 36px 'IBM Plex Sans Condensed'">No meaningful difference among the three controllers</div>
+          <p style="font:400 17px/1.65 'IBM Plex Serif';color:#3d4752;margin-top:14px">All 12 runs were valid: 190,704 transactions, none failed. Mean latency was 42.9, 48.4 and 44.1 ms, inside the 25 ms margin fixed before any run.</p>
+          <table><tr><th>Arm</th><th>Mean (ms)</th><th>p95 (ms)</th><th>Changes</th></tr><tr><td>Static B=2</td><td>42.9 &plusmn; 0.3</td><td>82.3</td><td>0</td></tr><tr><td>Reactive</td><td>48.4 &plusmn; 6.9</td><td>85.0</td><td>0</td></tr><tr><td>Predictive</td><td>44.1 &plusmn; 1.4</td><td>81.3</td><td>0</td></tr></table></div>
+        <div class="margin"><span class="badge">Measured</span><br><br>run_records.csv<br>sha256 checked<br><br>Run is the unit; n = 3 per arm, so no p-value below 0.10 is attainable.</div></div>
+    </div></div><div class="cap">Research overview (report with provenance margin)</div></div>
+    <div><div class="frame"><div class="screen B">
+      <div class="nav"><b>Cutpoint</b><span>Prediction studio</span></div>
+      <div class="doc" style="grid-template-columns:320px 1fr 240px"><div style="font-size:15px;line-height:2">Arrival rate <b style="float:right">100 tx/s</b><input type="range"><br>Block size <b style="float:right">100</b><input type="range"><br>Orderers <b style="float:right">5</b><br><br><span class="badge model">Model output</span> <span class="badge">Trained range</span></div>
+        <div><div class="stat">98.3 tx/s</div><div style="color:#5a6672">predicted throughput. Observed cell: 98.6 tx/s (a training cell, so this is in-sample).</div>
+          <svg viewBox="0 0 640 260" style="width:100%;margin-top:16px"><rect x="0" y="0" width="420" height="260" fill="#eef0fb"/><path d="M0 240 L100 200 L200 140 L300 80 L420 40 L640 40" stroke="#2d3fb0" stroke-width="2.5" fill="none"/><text x="440" y="30" font-size="13" fill="#5a6672">flat beyond 145 tx/s</text></svg></div>
+        <div class="margin">HistGB, 300 trees, T2 D0.<br>Validated only at 30 and 140 tx/s. Above 145 tx/s the model repeats its 145 response; historical MAE there was ~35 tx/s.</div></div>
+    </div></div><div class="cap">Prediction Studio (support region drawn on the chart)</div></div>
+  </div>
+</section>
+
+<!-- ================= C ================= -->
+<section class="dir">
+  <h2>C. Observatory: blockchain intelligence platform</h2>
+  <p>Deep navy, cyan glow, monospace throughout, node graph as hero. Visually immediate and closest to "blockchain analytics", but it reads as a live monitor of a running network. Nothing here is live, so the genre itself would mislead, and it slides toward the crypto look the brief rules out.</p>
+  <div class="row">
+    <div><div class="frame"><div class="screen C">
+      <div class="nav"><b>CUTPOINT://</b>network<span>experiments</span><span>models</span></div>
+      <div class="hero"><div><h3>Adaptive block control for Fabric.</h3><p>Forecast the load. Predict performance. Cut the right block.</p><span class="btn">Enter the observatory</span></div>
+        <div class="graph"><div class="node" style="left:40px;top:60px">Flashbots trace</div><div class="node" style="left:220px;top:180px">EWMA forecast</div><div class="node" style="left:60px;top:320px">HFBTP model</div><div class="node" style="left:360px;top:340px">Controller</div><div class="node" style="left:420px;top:90px">Orderer x3</div></div></div>
+    </div></div><div class="cap">Landing</div></div>
+    <div><div class="frame"><div class="screen C">
+      <div class="nav"><b>CUTPOINT://</b>overview</div>
+      <div class="grid2"><div class="tile">tx committed<div>190,704</div></div><div class="tile">failures<div>0</div></div><div class="tile">decisions<div>90</div></div><div class="tile" style="grid-column:span 3;height:320px">latency stream<svg viewBox="0 0 1100 240" style="width:100%"><path d="M0 200 L80 180 L160 190 L240 120 L320 160 L400 90 L480 150 L560 110 L640 170 L720 130 L800 160 L880 100 L960 140 L1040 120" stroke="#4fd6e6" stroke-width="2" fill="none"/></svg></div></div>
+    </div></div><div class="cap">Research overview</div></div>
+    <div><div class="frame"><div class="screen C">
+      <div class="nav"><b>CUTPOINT://</b>predict</div>
+      <div class="grid2"><div class="tile">rate<div>100</div></div><div class="tile">block<div>100</div></div><div class="tile">orderers<div>5</div></div><div class="tile" style="grid-column:span 3;height:320px">throughput forecast<div>98.3 tx/s</div></div></div>
+    </div></div><div class="cap">Prediction Studio</div></div>
+  </div>
+</section>
+</body>
+</html>
