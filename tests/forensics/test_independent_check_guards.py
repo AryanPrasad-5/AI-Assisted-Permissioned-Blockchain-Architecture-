@@ -1,7 +1,7 @@
 """Static guards for scripts/forensics/independent_check_hfbtp_forensics.py.
 
 Safe without authorization: parses the source only. No data, model or results file is read.
-The checker must stay a console-only, standard-library, second code path (root CLAUDE.md,
+The checker must stay a console-only, standard-library, second code path (root PROJECT_RULES.md,
 Computation boundary: "Descriptive HFBTP analysis ... read the CSV, print, write nothing").
 """
 

@@ -81,7 +81,7 @@ def test_valid_approval_is_accepted_and_thresholds_become_approved():
 
 
 @pytest.mark.parametrize("over", [
-    {"approved_by": "claude"}, {"approved_by": "OWNER"}, {"approved_utc": "tomorrow"}, {"prereg_sha256": "e" * 64}, {"window": "D_33000"},
+    {"approved_by": "assistant"}, {"approved_by": "OWNER"}, {"approved_utc": "tomorrow"}, {"prereg_sha256": "e" * 64}, {"window": "D_33000"},
     {"schedule": "BO"}, {"configs": "10,40,45"}, {"thresholds_status": "PROPOSED"}, {"s1_route": "SKIP"}, {"s1_evidence_sha256": "xyz"},
     {"law_p95_mapping": "mean"}, {"live_phase": "SERIES"}, {"run_order_seed": "abc"}, {"lp4_resolution": "NONE"}, {"rel_lag_max_ms": "fast"},
     {"drain_deadline_s": "0"}, {"per_second_count_tv": "-0.1"}])

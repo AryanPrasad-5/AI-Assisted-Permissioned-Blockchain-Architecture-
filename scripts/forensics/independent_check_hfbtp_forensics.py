@@ -20,7 +20,7 @@ Independence
     hypotheses).
 
 Computation class
-    Descriptive HFBTP analysis under root CLAUDE.md, Computation boundary:
+    Descriptive HFBTP analysis under root PROJECT_RULES.md, Computation boundary:
     reads HFBTP.csv and the stored results.json, prints to the console and
     writes nothing. It evaluates only pre-registered fixed values (n = 1000 and
     the prereg v0.1 section 5 sensitivity set). It does not run the

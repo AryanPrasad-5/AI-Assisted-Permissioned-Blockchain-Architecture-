@@ -62,7 +62,7 @@ def test_unknown_keys_and_repeated_keys_are_refused():
 
 
 @pytest.mark.parametrize("over,match", [
-    ({"approved_by": "claude"}, "approved_by must be 'owner'"),
+    ({"approved_by": "assistant"}, "approved_by must be 'owner'"),
     ({"prereg_sha256": "00" * 32}, "does not equal the hash of the preregistration"),
     ({"stage_sums_sha256": "11" * 32}, "stage_sums_sha256 does not equal"),
     ({"snapshot_id": "ARCHIVE_20261112T213119Z"}, "must name snapshot"),
